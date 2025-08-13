@@ -8,8 +8,8 @@ FLY_ENDPOINT = "https://uncle-frank-claude.fly.dev"
 
 [[kv_namespaces]]
 binding = "TASK_QUEUE"
-id = "YOUR_KV_NAMESPACE_ID"
-preview_id = "YOUR_KV_NAMESPACE_PREVIEW_ID"
+id = "d6d2cff8e8034ec188b3c165d7ab83f6"
+preview_id = "d6d2cff8e8034ec188b3c165d7ab83f6"
 
 [site]
 bucket = "./ui"
@@ -23,4 +23,4 @@ vars = { FLY_ENDPOINT = "https://uncle-frank-claude.fly.dev" }
 
 [[env.production.kv_namespaces]]
 binding = "TASK_QUEUE"
-id = "YOUR_PRODUCTION_KV_ID"
+id = "d6d2cff8e8034ec188b3c165d7ab83f6"
