@@ -1,0 +1,64 @@
+# Fly.io configuration for Autonomous Noderr Claude instance
+app = "uncle-frank-claude"
+primary_region = "ord"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+  SESSION_NAME = "claude-code"
+  WORKSPACE_DIR = "/workspace"
+
+[experimental]
+  auto_rollback = true
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+  
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "3s"
+    grace_period = "5s"
+    restart_limit = 6
+    path = "/health"
+    method = "GET"
+
+[[services]]
+  internal_port = 8081
+  protocol = "tcp"
+  
+  [[services.ports]]
+    port = 8081
+    handlers = ["http"]
+
+[mounts]
+  source = "claude_data"
+  destination = "/data"
+  initial_size = "10gb"
+
+[[vm]]
+  cpu_kind = "performance"
+  cpus = 2
+  memory_mb = 4096

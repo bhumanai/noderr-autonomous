@@ -1,0 +1,20 @@
+{
+  "name": "noderr-orchestrator",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for Noderr autonomous orchestration",
+  "type": "module",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "create-kv": "wrangler kv:namespace create TASK_QUEUE",
+    "set-secret-hmac": "wrangler secret put HMAC_SECRET",
+    "set-secret-claude": "wrangler secret put CLAUDE_API_KEY"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "author": "Noderr System",
+  "license": "MIT"
+}

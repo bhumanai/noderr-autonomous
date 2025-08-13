@@ -1,0 +1,32 @@
+name = "noderr-orchestrator"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV Namespace for task queue
+[[kv_namespaces]]
+binding = "TASK_QUEUE"
+id = "d6d2cff8e8034ec188b3c165d7ab83f6"
+
+# Environment variables
+[vars]
+FLY_ENDPOINT = "https://uncle-frank-claude.fly.dev"
+
+# Secrets (set via wrangler secret put)
+# HMAC_SECRET = "your-secret-here"
+# CLAUDE_API_KEY = "your-claude-api-key"
+
+# Cron triggers for scheduled tasks
+[triggers]
+crons = [
+  "*/5 * * * *",  # Every 5 minutes - process queue
+  "0 */6 * * *"   # Every 6 hours - cleanup old tasks
+]
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Route configuration (optional - if using custom domain)
+# route = "noderr.example.com/*"

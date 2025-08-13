@@ -1,0 +1,70 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# CloudFlare Wrangler
+.wrangler/
+dist/
+.dev.vars
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+
+# Fly.io
+fly.toml.bak
+
+# Claude Config (contains sensitive auth data)
+claude-config.json
+.claude.json
+*.claude.json
+claude-config/
+.claude/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Test outputs
+test-results/
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Secrets
+secrets/
+*.key
+*.pem
+*.crt
+
+# Backup files
+*.backup
+*.bak
+*~

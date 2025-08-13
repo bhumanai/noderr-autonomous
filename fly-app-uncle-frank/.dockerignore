@@ -1,0 +1,35 @@
+# Git files
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Development files
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+
+# Fly.io files
+fly.toml
+.fly/
