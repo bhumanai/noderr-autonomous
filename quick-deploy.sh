@@ -1,22 +1,16 @@
 #!/bin/bash
-# Quick deployment helper
 
-echo "Quick Deployment for Noderr"
+echo "🚀 Quick Deploy to Vercel (Easiest Option)"
+echo "=========================================="
 echo ""
-
-# Deploy Fly.io if authenticated
-if fly auth whoami &>/dev/null; then
-    echo "Deploying Fly.io app..."
-    cd fly-app-uncle-frank && fly deploy && cd ..
-fi
-
-# Deploy Cloudflare Worker if token exists
-if [[ -n "$CLOUDFLARE_API_TOKEN" ]]; then
-    echo "Deploying Cloudflare Worker..."
-    cd cloudflare-worker && wrangler deploy && cd ..
-fi
-
-# Suggest UI deployment
+echo "Run this single command:"
 echo ""
-echo "To deploy UI, run:"
-echo "npx wrangler pages deploy ui/ --project-name=noderr-ui"
+echo "  npx vercel --prod"
+echo ""
+echo "Or deploy via web:"
+echo "  1. Go to https://vercel.com/new"
+echo "  2. Import this repository"
+echo "  3. Deploy with zero config!"
+echo ""
+echo "Your app will be live in seconds at:"
+echo "https://[your-app].vercel.app"
