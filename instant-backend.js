@@ -1,10 +1,14 @@
 // Instant Backend for Noderr - Deploy to any Node.js host
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from docs directory
+app.use(express.static(path.join(__dirname, 'docs')));
 
 // In-memory storage
 let projects = [];
@@ -161,8 +165,14 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Serve frontend at root
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'docs', 'index.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Noderr Backend running on port ${PORT}`);
     console.log(`API available at http://localhost:${PORT}/api`);
+    console.log(`UI available at http://localhost:${PORT}`);
 });

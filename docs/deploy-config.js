@@ -1,14 +1,14 @@
-// Production Configuration for GitHub Pages
+// Configuration for Replit/Local Development
 const CONFIG = {
-    // Using the live Fly.io endpoint as API
-    API_BASE_URL: 'https://uncle-frank-claude.fly.dev',
-    FALLBACK_API: 'https://uncle-frank-claude.fly.dev',
-    SSE_ENDPOINT: 'https://uncle-frank-claude.fly.dev/api/sse',
-    ENVIRONMENT: 'production',
+    // Using the current server for both frontend and API
+    API_BASE_URL: window.location.origin,
+    FALLBACK_API: window.location.origin,
+    SSE_ENDPOINT: `${window.location.origin}/api/sse`,
+    ENVIRONMENT: 'development',
     FEATURES: {
         GIT_INTEGRATION: true,
         AUTO_COMMIT: true,
-        REAL_TIME_UPDATES: true
+        REAL_TIME_UPDATES: false // No SSE in instant backend
     }
 };
 
