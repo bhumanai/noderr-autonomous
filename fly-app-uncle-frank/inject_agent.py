@@ -14,6 +14,7 @@ from datetime import datetime
 from flask import Flask, request, jsonify
 from typing import Dict, Any, Optional
 from git_operations import setup_git_routes
+from api_routes import setup_api_routes
 
 # Configure logging
 logging.basicConfig(
@@ -26,6 +27,9 @@ app = Flask(__name__)
 
 # Setup Git routes
 setup_git_routes(app)
+
+# Setup API routes for UI
+setup_api_routes(app)
 
 # Configuration from environment
 HMAC_SECRET = os.environ.get('HMAC_SECRET', 'default-secret-change-me')
