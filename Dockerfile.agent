@@ -1,0 +1,64 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install flask requests
+
+# Create mock agent server
+RUN echo '#!/usr/bin/env python3\n\
+import os\n\
+import json\n\
+from flask import Flask, request, jsonify\n\
+import time\n\
+\n\
+app = Flask(__name__)\n\
+\n\
+@app.route("/health")\n\
+def health():\n\
+    return jsonify({\n\
+        "status": "healthy",\n\
+        "claude_session": True,\n\
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")\n\
+    })\n\
+\n\
+@app.route("/inject", methods=["POST"])\n\
+def inject():\n\
+    return jsonify({\n\
+        "success": True,\n\
+        "message": "Command injected (mock)"\n\
+    })\n\
+\n\
+@app.route("/git/status")\n\
+def git_status():\n\
+    return jsonify({\n\
+        "success": True,\n\
+        "branch": "main",\n\
+        "modified": ["demo.js"],\n\
+        "untracked": []\n\
+    })\n\
+\n\
+@app.route("/git/commit", methods=["POST"])\n\
+def git_commit():\n\
+    return jsonify({\n\
+        "success": True,\n\
+        "commit": f"commit-{int(time.time())}",\n\
+        "message": request.json.get("message", "Mock commit")\n\
+    })\n\
+\n\
+@app.route("/git/push", methods=["POST"])\n\
+def git_push():\n\
+    return jsonify({\n\
+        "success": True,\n\
+        "pushed": True,\n\
+        "branch": request.json.get("branch", "main")\n\
+    })\n\
+\n\
+if __name__ == "__main__":\n\
+    port = int(os.environ.get("PORT", 8082))\n\
+    app.run(host="0.0.0.0", port=port)\n\
+' > /app/agent_server.py
+
+EXPOSE 8082
+
+CMD ["python", "agent_server.py"]

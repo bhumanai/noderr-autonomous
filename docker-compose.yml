@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # UI Frontend
+  ui:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docs:/usr/share/nginx/html:ro
+    networks:
+      - noderr-net
+    restart: unless-stopped
+
+  # Mock API Server (Cloudflare Worker replacement)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - FLY_ENDPOINT=http://agent:8082
+    networks:
+      - noderr-net
+    restart: unless-stopped
+
+  # Mock Agent (Fly.io replacement)
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    ports:
+      - "8082:8082"
+    environment:
+      - PORT=8082
+    networks:
+      - noderr-net
+    restart: unless-stopped
+
+networks:
+  noderr-net:
+    driver: bridge

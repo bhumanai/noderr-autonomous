@@ -1,28 +1,16 @@
-// Deployment Configuration for Noderr Fleet Command UI
-// Update these URLs based on your actual deployment
-
+// Local Development Configuration
 const CONFIG = {
-    // API Endpoints
-    API_BASE_URL: 'https://noderr-orchestrator.terragonlabs.workers.dev',
-    
-    // Alternative API endpoints (fallback)
-    FALLBACK_API: 'https://uncle-frank-claude.fly.dev',
-    
-    // WebSocket/SSE endpoint for real-time updates
-    SSE_ENDPOINT: 'https://noderr-orchestrator.terragonlabs.workers.dev/api/sse',
-    
-    // Environment
-    ENVIRONMENT: 'production',
-    
-    // Features
+    API_BASE_URL: 'http://localhost:8081',
+    FALLBACK_API: 'http://localhost:8082',
+    SSE_ENDPOINT: 'http://localhost:8081/api/sse',
+    ENVIRONMENT: 'local',
     FEATURES: {
         GIT_INTEGRATION: true,
-        AUTO_COMMIT: true,
-        REAL_TIME_UPDATES: true
+        AUTO_COMMIT: false,  // Disabled in local mode
+        REAL_TIME_UPDATES: false  // SSE disabled in local mode
     }
 };
 
-// Export for use in app.js
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = CONFIG;
 }

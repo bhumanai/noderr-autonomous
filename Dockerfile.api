@@ -1,0 +1,83 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy API server code
+COPY local-dev-server.py /app/
+COPY cloudflare-worker/ /app/cloudflare-worker/
+
+# Install dependencies
+RUN pip install flask requests
+
+# Create a simple API server script
+RUN echo '#!/usr/bin/env python3\n\
+import os\n\
+import json\n\
+from flask import Flask, request, jsonify\n\
+from flask_cors import CORS\n\
+import time\n\
+\n\
+app = Flask(__name__)\n\
+CORS(app)\n\
+\n\
+tasks = []\n\
+projects = [{"id": "demo-1", "name": "Demo Project", "repo": "demo/repo", "branch": "main"}]\n\
+\n\
+@app.route("/api/status")\n\
+def status():\n\
+    return jsonify({\n\
+        "status": "healthy",\n\
+        "mode": "docker",\n\
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),\n\
+        "tasks": tasks\n\
+    })\n\
+\n\
+@app.route("/api/projects", methods=["GET", "POST"])\n\
+def handle_projects():\n\
+    if request.method == "GET":\n\
+        return jsonify(projects)\n\
+    else:\n\
+        project = request.json\n\
+        project["id"] = f"project-{int(time.time())}"\n\
+        projects.append(project)\n\
+        return jsonify(project), 201\n\
+\n\
+@app.route("/api/tasks", methods=["GET", "POST"])\n\
+def handle_tasks():\n\
+    if request.method == "GET":\n\
+        return jsonify(tasks)\n\
+    else:\n\
+        task = request.json\n\
+        task["id"] = f"task-{int(time.time())}"\n\
+        task["status"] = "ready"\n\
+        task["createdAt"] = time.strftime("%Y-%m-%dT%H:%M:%S")\n\
+        tasks.append(task)\n\
+        return jsonify(task), 201\n\
+\n\
+@app.route("/api/tasks/<task_id>/approve", methods=["POST"])\n\
+def approve_task(task_id):\n\
+    return jsonify({\n\
+        "success": True,\n\
+        "message": "Task approved",\n\
+        "commit": f"commit-{int(time.time())}"\n\
+    })\n\
+\n\
+@app.route("/api/git/status")\n\
+def git_status():\n\
+    return jsonify({\n\
+        "branch": "main",\n\
+        "modified": [],\n\
+        "untracked": [],\n\
+        "staged": []\n\
+    })\n\
+\n\
+if __name__ == "__main__":\n\
+    port = int(os.environ.get("PORT", 8081))\n\
+    app.run(host="0.0.0.0", port=port)\n\
+' > /app/api_server.py
+
+RUN pip install flask-cors
+
+EXPOSE 8081
+
+CMD ["python", "api_server.py"]
