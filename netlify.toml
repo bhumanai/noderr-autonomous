@@ -1,0 +1,21 @@
+[build]
+  publish = "docs"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://uncle-frank-claude.fly.dev/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/git/*"
+  to = "https://uncle-frank-claude.fly.dev/git/:splat"
+  status = 200
+  force = true
