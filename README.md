@@ -1,6 +1,6 @@
-# Noderr Autonomous Execution System
+# Noderr Autonomous Development System
 
-An intelligent autonomous development system that orchestrates Claude Code CLI to execute Noderr methodology automatically. The system uses CloudFlare Workers for orchestration and Fly.io for running Claude Code CLI instances.
+A complete autonomous development system that enables AI agents to work on coding tasks independently, with full Git integration for committing and pushing changes. The system uses CloudFlare Workers for orchestration, Fly.io for running Claude Code CLI instances, and includes a full-featured web UI for fleet management.
 
 ## 🚀 Overview
 

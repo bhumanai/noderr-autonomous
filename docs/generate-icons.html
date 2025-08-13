@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <h2>Noderr Fleet Icon Generator</h2>
+    <p>Right-click and save each canvas as PNG</p>
+    
+    <script>
+        // Generate simple icons with different sizes
+        const sizes = [32, 72, 96, 128, 144, 152, 192, 384, 512];
+        
+        sizes.forEach(size => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = `bold ${size * 0.3}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('NF', size / 2, size / 2);
+            
+            // Border
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = size * 0.02;
+            ctx.strokeRect(size * 0.1, size * 0.1, size * 0.8, size * 0.8);
+            
+            // Add to page
+            const div = document.createElement('div');
+            div.innerHTML = `<p>icon-${size}.png</p>`;
+            div.appendChild(canvas);
+            document.body.appendChild(div);
+            
+            // Convert to downloadable link
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `icon-${size}.png`;
+                a.textContent = `Download ${size}x${size}`;
+                div.appendChild(a);
+            });
+        });
+    </script>
+</body>
+</html>
