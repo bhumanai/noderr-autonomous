@@ -4,6 +4,7 @@
  */
 
 import { orchestrate, analyzeStateWithClaude, startNoderSession, NODERR_PROMPTS_GUIDE } from './orchestrator.js';
+import { handleProjects, handleTasks, handleGit, handleSSE } from './api-extensions.js';
 
 // Constants
 const FLY_ENDPOINT = 'https://uncle-frank-claude.fly.dev';
@@ -267,12 +268,56 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     
+    // Enable CORS for API endpoints
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    };
+    
+    // Handle preflight requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
+    
     // Dashboard
     if (url.pathname === '/') {
       const status = await getStatus(env);
       return new Response(renderDashboard(status), {
         headers: { 'Content-Type': 'text/html' }
       });
+    }
+    
+    // API: Projects management
+    if (url.pathname.startsWith('/api/projects')) {
+      const response = await handleProjects(request, env, request.method);
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
+    }
+    
+    // API: Enhanced task management
+    if (url.pathname.startsWith('/api/tasks')) {
+      const response = await handleTasks(request, env, request.method);
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
+    }
+    
+    // API: Git operations
+    if (url.pathname.startsWith('/api/git')) {
+      const response = await handleGit(request, env, request.method);
+      Object.entries(corsHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
+    }
+    
+    // API: Server-sent events for real-time updates
+    if (url.pathname === '/api/sse') {
+      return await handleSSE(request, env);
     }
     
     // API: Queue command

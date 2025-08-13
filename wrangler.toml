@@ -1,0 +1,26 @@
+name = "noderr-orchestrator"
+main = "cloudflare-worker/worker.js"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+FLY_ENDPOINT = "https://uncle-frank-claude.fly.dev"
+
+[[kv_namespaces]]
+binding = "TASK_QUEUE"
+id = "YOUR_KV_NAMESPACE_ID"
+preview_id = "YOUR_KV_NAMESPACE_PREVIEW_ID"
+
+[site]
+bucket = "./ui"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[env.production]
+name = "noderr-orchestrator"
+vars = { FLY_ENDPOINT = "https://uncle-frank-claude.fly.dev" }
+
+[[env.production.kv_namespaces]]
+binding = "TASK_QUEUE"
+id = "YOUR_PRODUCTION_KV_ID"
