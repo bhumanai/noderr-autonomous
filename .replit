@@ -1,0 +1,16 @@
+run = "npm install && npm start"
+entrypoint = "instant-backend.js"
+
+[nix]
+channel = "stable-21_11"
+
+[env]
+PORT = "3000"
+
+[packager]
+language = "nodejs"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+enabledForHosting = false

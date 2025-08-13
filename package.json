@@ -1,0 +1,17 @@
+{
+  "name": "noderr-backend",
+  "version": "1.0.0",
+  "description": "Instant backend for Noderr UI",
+  "main": "instant-backend.js",
+  "scripts": {
+    "start": "node instant-backend.js",
+    "dev": "node instant-backend.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
