@@ -1,0 +1,8 @@
+version: "2"
+authtoken: 2qDv5OnuZnD8mTsX8UAlgKqkKMS_6ACrKnZjJ5ZmaNzRKMFpV
+tunnels:
+  noderr-ui:
+    proto: http
+    addr: 8080
+    inspect: false
+    bind_tls: true

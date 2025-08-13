@@ -1,0 +1,7 @@
+version: "2"
+authtoken: 2qDv5OnuZnD8mTsX8UAlgKqkKMS_6ACrKnZjJ5ZmaNzRKMFpV
+tunnels:
+  noderr:
+    proto: http
+    addr: file:///root/repo/docs
+    inspect: false
