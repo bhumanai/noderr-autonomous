@@ -299,6 +299,8 @@ export default {
     
     // API: Enhanced task management
     if (url.pathname.startsWith('/api/tasks')) {
+      // Ensure FLY_ENDPOINT is available in env
+      env.FLY_ENDPOINT = env.FLY_ENDPOINT || FLY_ENDPOINT;
       const response = await handleTasks(request, env, request.method);
       Object.entries(corsHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);
@@ -308,6 +310,8 @@ export default {
     
     // API: Git operations
     if (url.pathname.startsWith('/api/git')) {
+      // Ensure FLY_ENDPOINT is available in env
+      env.FLY_ENDPOINT = env.FLY_ENDPOINT || FLY_ENDPOINT;
       const response = await handleGit(request, env, request.method);
       Object.entries(corsHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);

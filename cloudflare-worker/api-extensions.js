@@ -220,21 +220,73 @@ async function approveTask(taskId, request, env) {
     }
     
     const { commitMessage } = await request.json();
+    const FLY_ENDPOINT = env.FLY_ENDPOINT || 'https://uncle-frank-claude.fly.dev';
     
-    // TODO: Trigger actual git commit and push
-    // For now, just update the task status
-    task.status = 'pushed';
-    task.pushedAt = new Date().toISOString();
-    task.gitCommit = `commit_${Date.now()}`;
-    
-    await env.TASK_QUEUE.put(taskId, JSON.stringify(task));
-    
-    // Trigger SSE update
-    await broadcastTaskUpdate(env, 'task:completed', task);
-    
-    return new Response(JSON.stringify({ success: true, task }), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    try {
+        // Stage all changes
+        const addResponse = await fetch(`${FLY_ENDPOINT}/git/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: '/workspace' })
+        });
+        
+        if (!addResponse.ok) {
+            throw new Error('Failed to stage changes');
+        }
+        
+        // Commit changes
+        const commitResponse = await fetch(`${FLY_ENDPOINT}/git/commit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                path: '/workspace',
+                message: commitMessage || `Task completed: ${task.description}`
+            })
+        });
+        
+        const commitResult = await commitResponse.json();
+        if (!commitResult.success) {
+            throw new Error(commitResult.error || 'Failed to commit');
+        }
+        
+        // Push to remote
+        const pushResponse = await fetch(`${FLY_ENDPOINT}/git/push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: '/workspace' })
+        });
+        
+        const pushResult = await pushResponse.json();
+        if (!pushResult.success) {
+            throw new Error(pushResult.error || 'Failed to push');
+        }
+        
+        // Update task status
+        task.status = 'pushed';
+        task.pushedAt = new Date().toISOString();
+        task.gitCommit = commitResult.commit || `commit_${Date.now()}`;
+        
+        await env.TASK_QUEUE.put(taskId, JSON.stringify(task));
+        
+        // Trigger SSE update
+        await broadcastTaskUpdate(env, 'task:completed', task);
+        
+        return new Response(JSON.stringify({ 
+            success: true, 
+            task,
+            commit: commitResult.commit
+        }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            success: false, 
+            error: error.message 
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
 
 async function reviseTask(taskId, env) {
@@ -257,24 +309,39 @@ async function reviseTask(taskId, env) {
 }
 
 async function getTaskChanges(taskId, env) {
-    // TODO: Get actual git diff from agent
-    // For now, return mock data
-    const mockChanges = {
-        diff: `+ Added new authentication module
-+ Implemented OAuth2 flow
-+ Added unit tests
-- Removed deprecated code
-~ Modified configuration`,
-        files: [
-            'auth/oauth.js',
-            'auth/oauth.test.js',
-            'config/auth.json'
-        ]
-    };
+    const FLY_ENDPOINT = env.FLY_ENDPOINT || 'https://uncle-frank-claude.fly.dev';
     
-    return new Response(JSON.stringify(mockChanges), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    try {
+        // Get git diff from Fly.io
+        const diffResponse = await fetch(`${FLY_ENDPOINT}/git/diff?path=/workspace`);
+        
+        if (!diffResponse.ok) {
+            throw new Error('Failed to get diff');
+        }
+        
+        const diffResult = await diffResponse.json();
+        
+        if (diffResult.success) {
+            return new Response(JSON.stringify({
+                diff: diffResult.diff,
+                files: diffResult.files || []
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } else {
+            throw new Error(diffResult.error || 'Failed to get changes');
+        }
+    } catch (error) {
+        // Return error response
+        return new Response(JSON.stringify({
+            error: error.message,
+            diff: 'Unable to fetch changes',
+            files: []
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
 
 // Server-Sent Events for real-time updates
@@ -355,45 +422,138 @@ export async function handleGit(request, env, method) {
 
 async function handleCommit(request, env) {
     const { projectId, taskId, message } = await request.json();
+    const FLY_ENDPOINT = env.FLY_ENDPOINT || 'https://uncle-frank-claude.fly.dev';
     
-    // TODO: Trigger actual git commit on Fly.io
-    // For now, return success
-    return new Response(JSON.stringify({
-        success: true,
-        commit: `commit_${Date.now()}`,
-        message
-    }), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    try {
+        // Stage all changes first
+        const addResponse = await fetch(`${FLY_ENDPOINT}/git/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: '/workspace' })
+        });
+        
+        if (!addResponse.ok) {
+            throw new Error('Failed to stage changes');
+        }
+        
+        // Commit changes
+        const commitResponse = await fetch(`${FLY_ENDPOINT}/git/commit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                path: '/workspace',
+                message: message || 'Update from Noderr'
+            })
+        });
+        
+        const result = await commitResponse.json();
+        
+        if (result.success) {
+            return new Response(JSON.stringify({
+                success: true,
+                commit: result.commit,
+                message: message,
+                output: result.output
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } else {
+            throw new Error(result.error || 'Commit failed');
+        }
+    } catch (error) {
+        return new Response(JSON.stringify({
+            success: false,
+            error: error.message
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
 
 async function handlePush(request, env) {
     const { projectId, branch } = await request.json();
+    const FLY_ENDPOINT = env.FLY_ENDPOINT || 'https://uncle-frank-claude.fly.dev';
     
-    // TODO: Trigger actual git push on Fly.io
-    // For now, return success
-    return new Response(JSON.stringify({
-        success: true,
-        pushed: true,
-        branch: branch || 'main'
-    }), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    try {
+        // Push to remote
+        const pushResponse = await fetch(`${FLY_ENDPOINT}/git/push`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                path: '/workspace',
+                branch: branch || 'main'
+            })
+        });
+        
+        const result = await pushResponse.json();
+        
+        if (result.success) {
+            return new Response(JSON.stringify({
+                success: true,
+                pushed: true,
+                branch: branch || 'main',
+                output: result.output
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } else {
+            throw new Error(result.error || 'Push failed');
+        }
+    } catch (error) {
+        return new Response(JSON.stringify({
+            success: false,
+            error: error.message
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
 
 async function handleGitStatus(request, env) {
     const url = new URL(request.url);
     const projectId = url.searchParams.get('projectId');
+    const FLY_ENDPOINT = env.FLY_ENDPOINT || 'https://uncle-frank-claude.fly.dev';
     
-    // TODO: Get actual git status from Fly.io
-    // For now, return mock status
-    return new Response(JSON.stringify({
-        branch: 'main',
-        ahead: 0,
-        behind: 0,
-        modified: [],
-        untracked: []
-    }), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    try {
+        // Get git status from Fly.io
+        const statusResponse = await fetch(`${FLY_ENDPOINT}/git/status?path=/workspace`);
+        
+        if (!statusResponse.ok) {
+            throw new Error('Failed to get status');
+        }
+        
+        const result = await statusResponse.json();
+        
+        if (result.success) {
+            return new Response(JSON.stringify({
+                branch: result.branch || 'main',
+                ahead: 0,  // Would need additional git commands to get this
+                behind: 0, // Would need additional git commands to get this
+                modified: result.modified || [],
+                untracked: result.untracked || [],
+                staged: result.staged || []
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } else {
+            throw new Error(result.error || 'Status check failed');
+        }
+    } catch (error) {
+        return new Response(JSON.stringify({
+            success: false,
+            error: error.message,
+            // Return empty status on error
+            branch: 'unknown',
+            ahead: 0,
+            behind: 0,
+            modified: [],
+            untracked: [],
+            staged: []
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
