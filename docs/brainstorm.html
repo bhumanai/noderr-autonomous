@@ -546,7 +546,7 @@
                         statusText.textContent = 'Claude Connected';
                     } else {
                         statusDot.style.background = '#ef4444';
-                        statusText.textContent = 'CLAUDE REQUIRED - NOT AVAILABLE';
+                        statusText.innerHTML = 'CLAUDE REQUIRED - <a href="#" onclick="openClaudeAuth()" style="color: #fff; text-decoration: underline;">AUTHENTICATE</a>';
                     }
                 } else {
                     statusDot.style.background = '#ef4444';
@@ -570,6 +570,13 @@
 
         // Periodically check Claude status
         setInterval(checkClaudeStatus, 30000);
+        
+        // Function to open Claude authentication
+        window.openClaudeAuth = function() {
+            window.open('claude-auth.html', 'ClaudeAuth', 'width=600,height=700');
+            // Check status again after a delay
+            setTimeout(checkClaudeStatus, 5000);
+        };
     </script>
 </body>
 </html>

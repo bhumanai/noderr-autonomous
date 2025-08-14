@@ -48,6 +48,7 @@ RUN useradd -m -s /bin/bash claude-user && \
 # Copy application files
 COPY inject_agent_cors.py /app/inject_agent.py
 COPY noderr_api.py /app/
+COPY claude_auth_handler.py /app/
 COPY completion_monitor.py /app/
 COPY scripts/start.sh /app/
 COPY scripts/init-claude.sh /app/
