@@ -368,59 +368,50 @@ app.post('/api/brainstorm/analyze', async (req, res) => {
     const { message, context } = req.body;
     const { projectId } = context || {};
     
-    // Enhance context with actual project files if available
-    let enhancedContext = { ...context };
-    
+    // If we have a project with a cloned repo, use Claude CLI for brainstorming
     if (projectId) {
         const project = projects.find(p => p.id === projectId);
         if (project && project.localPath) {
             try {
-                // Get file tree for context
-                const getSimpleTree = async (dir, basePath = '', depth = 2) => {
-                    if (depth <= 0) return [];
-                    const items = await fs.readdir(dir, { withFileTypes: true });
-                    const tree = [];
-                    
-                    for (const item of items) {
-                        if (item.name.startsWith('.git') || item.name === 'node_modules') continue;
-                        
-                        const itemPath = path.join(basePath, item.name);
-                        
-                        if (item.isDirectory() && depth > 1) {
-                            tree.push(`${itemPath}/`);
-                        } else if (item.isFile()) {
-                            tree.push(itemPath);
-                        }
-                    }
-                    
-                    return tree;
-                };
+                // Generate session ID
+                const sessionId = `brainstorm-${projectId}-${Date.now()}`;
                 
-                const fileTree = await getSimpleTree(project.localPath);
-                enhancedContext.projectStructure = fileTree.slice(0, 30).join('\n');
+                // Start Claude brainstorm session
+                console.log(`Starting Claude CLI brainstorm session for project ${projectId}`);
                 
-                // Try to read package.json for tech stack info
-                try {
-                    const pkgPath = path.join(project.localPath, 'package.json');
-                    const pkgContent = await fs.readFile(pkgPath, 'utf-8');
-                    const pkg = JSON.parse(pkgContent);
-                    const deps = Object.keys(pkg.dependencies || {}).slice(0, 10);
-                    enhancedContext.techStack = `Node.js with: ${deps.join(', ')}`;
-                    enhancedContext.projectType = pkg.description || 'Node.js application';
-                } catch (e) {
-                    // No package.json or error reading it
-                }
+                // Execute the brainstorm script
+                execSync(`./brainstorm-with-claude.sh "${projectId}" "${project.localPath}" "${message}" "${sessionId}"`, {
+                    cwd: __dirname
+                });
                 
-                console.log('Enhanced context with project files');
+                // Return session info immediately (async brainstorming)
+                res.json({
+                    sessionId,
+                    status: 'started',
+                    message: 'Claude is analyzing your codebase. This may take a minute...',
+                    checkUrl: `/api/brainstorm/sessions/${sessionId}/status`
+                });
+                return;
             } catch (error) {
-                console.error('Failed to enhance context:', error.message);
+                console.error('Failed to start Claude brainstorm session:', error.message);
+                // Fall through to use API-based brainstorming
             }
         }
     }
     
-    // Try to use the AI module if available
+    // Fallback: Try to use the OpenAI/GPT-5 module if available
     if (analyzeWithAI) {
         try {
+            // Get basic context even without full file access
+            let enhancedContext = { ...context };
+            if (projectId) {
+                const project = projects.find(p => p.id === projectId);
+                if (project) {
+                    enhancedContext.projectName = project.name;
+                    enhancedContext.repository = project.repo;
+                }
+            }
+            
             const result = await analyzeWithAI(message, enhancedContext);
             res.json(result);
             return;
@@ -507,6 +498,103 @@ app.post('/api/brainstorm/analyze', async (req, res) => {
     }
     
     res.json(response);
+});
+
+// Get brainstorm session status and results
+app.get('/api/brainstorm/sessions/:sessionId/status', async (req, res) => {
+    const { sessionId } = req.params;
+    const outputDir = `/tmp/noderr-brainstorms/${sessionId}`;
+    
+    try {
+        // Check if session info exists
+        const sessionPath = path.join(outputDir, 'session.json');
+        const sessionData = await fs.readFile(sessionPath, 'utf-8');
+        const session = JSON.parse(sessionData);
+        
+        // Check if tasks.json has been created (indicates completion)
+        const tasksPath = path.join(outputDir, 'tasks.json');
+        try {
+            const tasksData = await fs.readFile(tasksPath, 'utf-8');
+            const tasks = JSON.parse(tasksData);
+            
+            // Session completed
+            res.json({
+                ...session,
+                status: 'completed',
+                result: tasks
+            });
+        } catch (e) {
+            // Tasks not ready yet, check if tmux session is still running
+            try {
+                execSync(`tmux has-session -t ${sessionId} 2>/dev/null`);
+                // Session still running
+                res.json({
+                    ...session,
+                    status: 'running',
+                    message: 'Claude is still analyzing your codebase...'
+                });
+            } catch (tmuxError) {
+                // Session ended but no tasks generated (might have failed)
+                res.json({
+                    ...session,
+                    status: 'failed',
+                    error: 'Brainstorm session ended without generating tasks'
+                });
+            }
+        }
+    } catch (error) {
+        res.status(404).json({
+            error: 'Session not found',
+            sessionId
+        });
+    }
+});
+
+// Get tmux session output (for debugging)
+app.get('/api/brainstorm/sessions/:sessionId/output', async (req, res) => {
+    const { sessionId } = req.params;
+    
+    try {
+        // Capture tmux pane content
+        const output = execSync(`tmux capture-pane -t ${sessionId} -p`, {
+            encoding: 'utf-8',
+            maxBuffer: 1024 * 1024 * 10 // 10MB buffer
+        });
+        
+        res.json({
+            sessionId,
+            output,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(404).json({
+            error: 'Session not found or not running',
+            sessionId
+        });
+    }
+});
+
+// Kill a brainstorm session
+app.delete('/api/brainstorm/sessions/:sessionId', async (req, res) => {
+    const { sessionId } = req.params;
+    
+    try {
+        // Kill tmux session if running
+        execSync(`tmux kill-session -t ${sessionId} 2>/dev/null`);
+        console.log(`Killed brainstorm session: ${sessionId}`);
+    } catch (e) {
+        // Session might not exist, that's ok
+    }
+    
+    // Clean up output directory
+    const outputDir = `/tmp/noderr-brainstorms/${sessionId}`;
+    try {
+        await fs.rm(outputDir, { recursive: true, force: true });
+    } catch (e) {
+        // Directory might not exist
+    }
+    
+    res.json({ message: 'Session terminated', sessionId });
 });
 
 // Status endpoint
