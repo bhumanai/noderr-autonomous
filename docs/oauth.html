@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noderr - Authenticate Claude</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #fff;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            max-width: 600px;
+            width: 100%;
+            padding: 48px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        
+        .logo {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        
+        .status-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 32px;
+            transition: all 0.3s ease;
+        }
+        
+        .status-card.success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        
+        .status-card.error {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        
+        .status-card.processing {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.active { background: #10b981; }
+        .status-indicator.inactive { background: #ef4444; }
+        .status-indicator.processing { background: #3b82f6; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .step {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .step:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-2px);
+        }
+        
+        .step.active {
+            border-color: rgba(102, 126, 234, 0.5);
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .step.completed {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.05);
+        }
+        
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .step-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            margin-right: 16px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .step.completed .step-number {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .step-description {
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        
+        .button {
+            width: 100%;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        
+        .button:disabled {
+            background: rgba(255, 255, 255, 0.1);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .url-display {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .url-display:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+        
+        input {
+            width: 100%;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: rgba(102, 126, 234, 0.5);
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success-message {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 24px;
+        }
+        
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 24px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🤖</div>
+        <h1>Authenticate Claude</h1>
+        <p class="subtitle">Connect Claude to Noderr Autonomous System</p>
+        
+        <div id="status-card" class="status-card">
+            <span id="status-indicator" class="status-indicator inactive"></span>
+            <span id="status-text">Claude is not authenticated</span>
+        </div>
+        
+        <div id="steps-container">
+            <!-- Step 1: Start OAuth -->
+            <div class="step" id="step1">
+                <div class="step-header">
+                    <span class="step-number">1</span>
+                    <span class="step-title">Initialize OAuth</span>
+                </div>
+                <p class="step-description">
+                    Start the OAuth authentication flow to connect Claude to your account.
+                </p>
+                <button id="start-btn" class="button" onclick="startOAuth()">
+                    Start Authentication
+                </button>
+            </div>
+            
+            <!-- Step 2: OAuth URL -->
+            <div class="step" id="step2" style="display: none;">
+                <div class="step-header">
+                    <span class="step-number">2</span>
+                    <span class="step-title">Authenticate with Claude</span>
+                </div>
+                <p class="step-description">
+                    Click the URL below to authenticate with your Claude account:
+                </p>
+                <div id="oauth-url-container"></div>
+            </div>
+            
+            <!-- Step 3: Enter Code -->
+            <div class="step" id="step3" style="display: none;">
+                <div class="step-header">
+                    <span class="step-number">3</span>
+                    <span class="step-title">Complete Authentication</span>
+                </div>
+                <p class="step-description">
+                    Enter the authorization code from Claude:
+                </p>
+                <input type="text" id="auth-code" placeholder="Paste your authorization code here">
+                <button class="button" onclick="submitCode()">Submit Code</button>
+                <div id="error-message" class="error-message"></div>
+            </div>
+        </div>
+        
+        <!-- Success State -->
+        <div id="success-container" class="success-message" style="display: none;">
+            <div class="success-icon">✅</div>
+            <h2>Authentication Successful!</h2>
+            <p style="color: rgba(255, 255, 255, 0.6); margin-top: 16px;">
+                Claude is now connected to the Noderr system.
+            </p>
+            <div class="info-box">
+                <strong>What's next?</strong><br>
+                • Claude can now execute commands autonomously<br>
+                • The session will remain active until token expiry<br>
+                • You can send commands via the API endpoints
+            </div>
+            <button class="button" style="margin-top: 24px;" onclick="testConnection()">
+                Test Connection
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'https://uncle-frank-claude.fly.dev';
+        const HMAC_SECRET = 'test-secret-change-in-production';
+        
+        let pollInterval;
+        let currentStep = 1;
+        
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        async function signCommand(command) {
+            // Simplified for demo - in production use proper HMAC
+            return await sha256(command + HMAC_SECRET);
+        }
+        
+        async function sendCommand(command) {
+            try {
+                const signature = await signCommand(command);
+                const response = await fetch(`${API_BASE}/inject`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({command, signature})
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Command error:', error);
+                throw error;
+            }
+        }
+        
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Health check error:', error);
+                return { status: 'error', claude_session: false };
+            }
+        }
+        
+        async function startOAuth() {
+            const btn = document.getElementById('start-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loader"></span>Starting...';
+            
+            updateStatus('processing', 'Initializing OAuth flow...');
+            
+            try {
+                // Start Claude login
+                await sendCommand('claude login');
+                await sleep(3000);
+                
+                // Select option 1 (Claude subscription)
+                await sendCommand('1');
+                await sleep(2000);
+                
+                // Update UI
+                document.getElementById('step1').classList.add('completed');
+                document.getElementById('step2').style.display = 'block';
+                document.getElementById('step2').classList.add('active');
+                document.getElementById('step3').style.display = 'block';
+                
+                // Display OAuth URL
+                const oauthUrl = 'https://claude.ai/login?return_to=%2Fapi%2Fauth%2Foauth%2Fauthorize';
+                document.getElementById('oauth-url-container').innerHTML = `
+                    <div class="url-display" onclick="window.open('${oauthUrl}', '_blank')">
+                        ${oauthUrl}
+                    </div>
+                    <p style="font-size: 14px; color: rgba(255, 255, 255, 0.6); margin-top: 8px;">
+                        Click to open in a new tab
+                    </p>
+                `;
+                
+                updateStatus('processing', 'Waiting for authentication...');
+                currentStep = 2;
+                
+            } catch (error) {
+                updateStatus('error', `Error: ${error.message}`);
+                btn.disabled = false;
+                btn.innerHTML = 'Start Authentication';
+            }
+        }
+        
+        async function submitCode() {
+            const code = document.getElementById('auth-code').value.trim();
+            const errorMsg = document.getElementById('error-message');
+            
+            if (!code) {
+                errorMsg.textContent = 'Please enter the authorization code';
+                return;
+            }
+            
+            errorMsg.textContent = '';
+            updateStatus('processing', 'Submitting authorization code...');
+            
+            try {
+                // Send code to Claude
+                await sendCommand(code);
+                await sleep(5000);
+                
+                // Check if authenticated
+                const health = await checkHealth();
+                
+                if (health.claude_session) {
+                    // Success!
+                    document.getElementById('step2').classList.remove('active');
+                    document.getElementById('step2').classList.add('completed');
+                    document.getElementById('step3').classList.add('completed');
+                    
+                    showSuccess();
+                } else {
+                    errorMsg.textContent = 'Authentication failed. Please try again.';
+                    updateStatus('error', 'Authentication failed');
+                }
+                
+            } catch (error) {
+                errorMsg.textContent = `Error: ${error.message}`;
+                updateStatus('error', 'Failed to submit code');
+            }
+        }
+        
+        function showSuccess() {
+            document.getElementById('steps-container').style.display = 'none';
+            document.getElementById('success-container').style.display = 'block';
+            updateStatus('success', 'Claude is authenticated and ready!');
+        }
+        
+        async function testConnection() {
+            updateStatus('processing', 'Testing connection...');
+            
+            try {
+                await sendCommand('echo "Claude is working!"');
+                await sleep(3000);
+                
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                
+                if (data.current_output && data.current_output.includes('working')) {
+                    updateStatus('success', 'Connection test successful!');
+                } else {
+                    updateStatus('error', 'Connection test failed');
+                }
+            } catch (error) {
+                updateStatus('error', `Test failed: ${error.message}`);
+            }
+        }
+        
+        function updateStatus(type, message) {
+            const card = document.getElementById('status-card');
+            const indicator = document.getElementById('status-indicator');
+            const text = document.getElementById('status-text');
+            
+            card.className = `status-card ${type}`;
+            indicator.className = `status-indicator ${type === 'success' ? 'active' : type === 'error' ? 'inactive' : 'processing'}`;
+            text.textContent = message;
+        }
+        
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        // Check initial status on load
+        (async () => {
+            const health = await checkHealth();
+            if (health.claude_session) {
+                showSuccess();
+            }
+        })();
+    </script>
+</body>
+</html>
