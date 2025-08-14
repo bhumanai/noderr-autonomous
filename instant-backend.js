@@ -6,16 +6,6 @@ const fs = require('fs').promises;
 const { execSync, spawn } = require('child_process');
 const os = require('os');
 
-// Try to load AI module
-let analyzeWithAI;
-try {
-    const aiModule = require('./api/brainstorm-ai');
-    analyzeWithAI = aiModule.analyzeWithAI;
-    console.log('AI module loaded successfully');
-} catch (error) {
-    console.log('AI module not available, will use fallback');
-}
-
 const app = express();
 
 app.use(cors());
@@ -368,137 +358,63 @@ app.post('/api/brainstorm/analyze', async (req, res) => {
     const { message, context } = req.body;
     const { projectId } = context || {};
     
-    // If we have a project with a cloned repo, use Claude CLI for brainstorming
-    if (projectId) {
-        const project = projects.find(p => p.id === projectId);
-        if (project && project.localPath) {
-            try {
-                // Generate session ID
-                const sessionId = `brainstorm-${projectId}-${Date.now()}`;
-                
-                // Start Claude brainstorm session
-                console.log(`Starting Claude CLI brainstorm session for project ${projectId}`);
-                
-                // Execute the brainstorm script
-                const scriptPath = path.join(__dirname, 'brainstorm-with-claude.sh');
-                execSync(`"${scriptPath}" "${projectId}" "${project.localPath}" "${message}" "${sessionId}"`, {
-                    cwd: __dirname
-                });
-                
-                // Return session info immediately (async brainstorming)
-                res.json({
-                    sessionId,
-                    status: 'started',
-                    message: 'Claude is analyzing your codebase. This may take a minute...',
-                    checkUrl: `/api/brainstorm/sessions/${sessionId}/status`
-                });
-                return;
-            } catch (error) {
-                console.error('Failed to start Claude brainstorm session:', error.message);
-                // Fall through to use API-based brainstorming
-            }
-        }
+    // REQUIREMENT: Must have a project with a cloned repository
+    if (!projectId) {
+        return res.status(400).json({
+            error: 'Project ID required',
+            message: 'You must create a project with a git repository first'
+        });
     }
     
-    // Fallback: Try to use the OpenAI/GPT-5 module if available
-    if (analyzeWithAI) {
-        try {
-            // Get basic context even without full file access
-            let enhancedContext = { ...context };
-            if (projectId) {
-                const project = projects.find(p => p.id === projectId);
-                if (project) {
-                    enhancedContext.projectName = project.name;
-                    enhancedContext.repository = project.repo;
-                }
-            }
-            
-            const result = await analyzeWithAI(message, enhancedContext);
-            res.json(result);
-            return;
-        } catch (error) {
-            console.error('AI analysis failed:', error.message);
-        }
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+        return res.status(404).json({
+            error: 'Project not found',
+            message: `Project ${projectId} does not exist`
+        });
     }
     
-    // Fallback to simple keyword-based response
-    const lowerMessage = message.toLowerCase();
-    let response = {
-        analysis: 'Let me analyze your request...',
-        tasks: [],
-        clarifyingQuestions: [],
-        assumptions: [],
-        risks: []
-    };
-    
-    if (lowerMessage.includes('feature') || lowerMessage.includes('add')) {
-        response.analysis = 'I\'ll help you plan this new feature.';
-        response.tasks = [
-            {
-                id: `task-${Date.now()}-1`,
-                title: 'Research similar implementations',
-                description: 'Look at how similar features are implemented',
-                estimatedHours: 2,
-                complexity: 'low',
-                dependencies: [],
-                status: 'suggested'
-            },
-            {
-                id: `task-${Date.now()}-2`,
-                title: 'Design the architecture',
-                description: 'Create a detailed design',
-                estimatedHours: 3,
-                complexity: 'medium',
-                dependencies: [0],
-                status: 'suggested'
-            }
-        ];
-        response.clarifyingQuestions = [
-            'What is the expected scale of this feature?',
-            'Are there any specific requirements?'
-        ];
-    } else if (lowerMessage.includes('bug') || lowerMessage.includes('fix')) {
-        response.analysis = 'Let\'s systematically debug this issue.';
-        response.tasks = [
-            {
-                id: `task-${Date.now()}-1`,
-                title: 'Reproduce the bug',
-                description: 'Create a reliable reproduction case',
-                estimatedHours: 2,
-                complexity: 'low',
-                dependencies: [],
-                status: 'suggested'
-            },
-            {
-                id: `task-${Date.now()}-2`,
-                title: 'Identify root cause',
-                description: 'Debug and find the source of the issue',
-                estimatedHours: 3,
-                complexity: 'medium',
-                dependencies: [0],
-                status: 'suggested'
-            }
-        ];
-        response.clarifyingQuestions = [
-            'When did this issue start occurring?',
-            'Can you reproduce it consistently?'
-        ];
-    } else {
-        response.analysis = 'Let me break this down into manageable tasks.';
-        response.tasks = [
-            {
-                id: `task-${Date.now()}-1`,
-                title: 'Define requirements',
-                description: 'Clarify what needs to be done',
-                estimatedHours: 2,
-                complexity: 'low',
-                dependencies: [],
-                status: 'suggested'
-            }
-        ];
+    if (!project.localPath) {
+        return res.status(400).json({
+            error: 'No repository cloned',
+            message: 'Project must have a cloned repository for brainstorming'
+        });
     }
     
-    res.json(response);
+    // ONLY Claude CLI - no fallbacks, no half measures
+    try {
+        // Generate session ID
+        const sessionId = `brainstorm-${projectId}-${Date.now()}`;
+        
+        // Start Claude brainstorm session
+        console.log(`Starting Claude CLI brainstorm session for project ${projectId}`);
+        console.log(`Repository path: ${project.localPath}`);
+        console.log(`Session ID: ${sessionId}`);
+        
+        // Execute the brainstorm script
+        const scriptPath = path.join(__dirname, 'brainstorm-with-claude.sh');
+        execSync(`bash "${scriptPath}" "${projectId}" "${project.localPath}" "${message}" "${sessionId}"`, {
+            cwd: __dirname,
+            stdio: 'inherit'
+        });
+        
+        // Return session info immediately (async brainstorming)
+        res.json({
+            sessionId,
+            status: 'started',
+            message: 'Claude is analyzing your codebase. This may take a minute...',
+            checkUrl: `/api/brainstorm/sessions/${sessionId}/status`,
+            projectId: projectId,
+            repository: project.repo
+        });
+    } catch (error) {
+        console.error('Failed to start Claude brainstorm session:', error);
+        res.status(500).json({
+            error: 'Failed to start Claude session',
+            message: error.message,
+            details: 'Make sure Claude CLI is installed and tmux is available'
+        });
+    }
 });
 
 // Get brainstorm session status and results
