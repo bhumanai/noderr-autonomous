@@ -38,7 +38,7 @@ def start_auth():
                 subprocess.run(
                     ['sudo', '-u', 'claude-user', 'tmux', 'kill-session', '-t', tmux_session],
                     capture_output=True,
-                    timeout=5
+                    timeout=10
                 )
             except:
                 pass  # Session might not exist
@@ -50,7 +50,7 @@ def start_auth():
                      'claude auth login'],
                     capture_output=True,
                     text=True,
-                    timeout=5
+                    timeout=30
                 )
                 
                 # Wait for output to appear
@@ -61,7 +61,7 @@ def start_auth():
                     ['sudo', '-u', 'claude-user', 'tmux', 'capture-pane', '-t', tmux_session, '-p'],
                     capture_output=True,
                     text=True,
-                    timeout=10
+                    timeout=30
                 )
                 
                 output = result.stdout
@@ -159,7 +159,7 @@ def check_auth_status(session_id):
                 ['sudo', '-u', 'claude-user', 'tmux', 'capture-pane', '-t', session['tmux_session'], '-p'],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=30
             )
             
             output = result.stdout
@@ -174,7 +174,7 @@ def check_auth_status(session_id):
                     subprocess.run(
                         ['sudo', '-u', 'claude-user', 'tmux', 'kill-session', '-t', session['tmux_session']],
                         capture_output=True,
-                        timeout=5
+                        timeout=10
                     )
                 except:
                     pass
@@ -187,7 +187,7 @@ def check_auth_status(session_id):
             ['sudo', '-u', 'claude-user', 'claude', 'auth', 'status'],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=30
         )
         
         if 'Authenticated' in result.stdout or 'logged in' in result.stdout.lower():
@@ -213,7 +213,7 @@ def verify_auth():
             ['sudo', '-u', 'claude-user', 'claude', 'auth', 'status'],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=30
         )
         
         authenticated = 'Authenticated' in result.stdout or 'logged in' in result.stdout.lower()
@@ -252,7 +252,7 @@ def logout():
             ['sudo', '-u', 'claude-user', 'claude', 'auth', 'logout'],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=30
         )
         
         return jsonify({
@@ -267,6 +267,92 @@ def logout():
             'error': str(e)
         }), 500
 
+@app.route('/claude/debug', methods=['GET', 'OPTIONS'])
+def debug_claude():
+    """Debug Claude CLI installation and configuration"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    debug_info = {}
+    
+    # Check if claude binary exists
+    try:
+        which_result = subprocess.run(
+            ['which', 'claude'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        debug_info['claude_path'] = which_result.stdout.strip() or 'Not found'
+    except Exception as e:
+        debug_info['claude_path'] = f'Error: {str(e)}'
+    
+    # Check claude version
+    try:
+        version_result = subprocess.run(
+            ['claude', '--version'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        debug_info['claude_version'] = version_result.stdout.strip() or version_result.stderr.strip()
+    except Exception as e:
+        debug_info['claude_version'] = f'Error: {str(e)}'
+    
+    # Check claude-user home directory
+    try:
+        home_result = subprocess.run(
+            ['sudo', '-u', 'claude-user', 'sh', '-c', 'echo $HOME'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        debug_info['claude_user_home'] = home_result.stdout.strip()
+    except Exception as e:
+        debug_info['claude_user_home'] = f'Error: {str(e)}'
+    
+    # Check if .claude directory exists
+    try:
+        claude_dir_result = subprocess.run(
+            ['sudo', '-u', 'claude-user', 'ls', '-la', '/home/claude-user/.config/'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        debug_info['claude_config_dir'] = claude_dir_result.stdout or 'Empty'
+    except Exception as e:
+        debug_info['claude_config_dir'] = f'Error: {str(e)}'
+    
+    # Try running claude auth status with detailed output
+    try:
+        auth_result = subprocess.run(
+            ['sudo', '-u', 'claude-user', 'claude', 'auth', 'status'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        debug_info['auth_status_stdout'] = auth_result.stdout or 'No output'
+        debug_info['auth_status_stderr'] = auth_result.stderr or 'No errors'
+        debug_info['auth_status_code'] = auth_result.returncode
+    except subprocess.TimeoutExpired:
+        debug_info['auth_status'] = 'Timeout after 30 seconds'
+    except Exception as e:
+        debug_info['auth_status'] = f'Error: {str(e)}'
+    
+    # Check tmux sessions
+    try:
+        tmux_result = subprocess.run(
+            ['sudo', '-u', 'claude-user', 'tmux', 'list-sessions'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        debug_info['tmux_sessions'] = tmux_result.stdout or 'No sessions'
+    except Exception as e:
+        debug_info['tmux_sessions'] = f'Error or no sessions: {str(e)}'
+    
+    return jsonify(debug_info)
+
 @app.route('/health', methods=['GET', 'OPTIONS'])
 def health():
     """Health check with Claude status"""
@@ -279,7 +365,7 @@ def health():
             ['sudo', '-u', 'claude-user', 'claude', 'auth', 'status'],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=30
         )
         claude_authenticated = 'Authenticated' in result.stdout or 'logged in' in result.stdout.lower()
     except:
