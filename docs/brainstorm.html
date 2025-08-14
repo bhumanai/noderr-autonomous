@@ -287,14 +287,17 @@
             <div class="message assistant">
                 <div class="message-avatar">🤖</div>
                 <div class="message-content">
-                    <p>Hello! I'm your brainstorming assistant. I can help you:</p>
+                    <p>⚠️ <strong>CLAUDE CODE CLI REQUIRED</strong></p>
                     <br>
+                    <p>This brainstorming assistant connects directly to Claude AI.</p>
+                    <p>No mock mode. No fallbacks. Real Claude or nothing.</p>
+                    <br>
+                    <p>When Claude is connected, I can help you:</p>
                     <p>• Break down complex projects into tasks</p>
                     <p>• Suggest implementation approaches</p>
-                    <p>• Identify potential challenges</p>
                     <p>• Create actionable development tasks</p>
                     <br>
-                    <p>What would you like to work on today?</p>
+                    <p style="color: #ef4444;">If Claude is not available, this feature will NOT work.</p>
                 </div>
             </div>
         </div>
@@ -379,26 +382,26 @@
                     if (data.success && data.tasks && data.tasks.length > 0) {
                         // Show Claude's response with task suggestions
                         const responseDiv = document.createElement('div');
-                        const isRealClaude = data.claude === true;
                         responseDiv.innerHTML = `
-                            <p>${isRealClaude ? '✨ Claude suggests these tasks:' : 'Here are some task suggestions:'}</p>
+                            <p>✨ Claude suggests these tasks:</p>
                             ${createTaskSuggestions(data.tasks)}
-                            ${isRealClaude ? '<p style="margin-top: 8px; font-size: 0.85rem; color: #9ca3af;">Powered by Claude AI</p>' : ''}
+                            <p style="margin-top: 8px; font-size: 0.85rem; color: #9ca3af;">Powered by Claude AI</p>
                         `;
                         addMessage(responseDiv, 'assistant');
                     } else {
-                        // Fallback to local generation if no tasks returned
-                        generateResponse(message);
+                        // CLAUDE REQUIRED - NO FALLBACK
+                        addMessage('❌ ERROR: Claude is not available. This feature requires Claude Code CLI to be running.', 'assistant');
                     }
                 } else {
-                    // Error - use local generation
-                    generateResponse(message);
+                    // CLAUDE REQUIRED - NO FALLBACK
+                    const error = await response.json();
+                    addMessage(`❌ ERROR: ${error.error || 'Claude is not available'}`, 'assistant');
                 }
             } catch (error) {
                 console.error('Brainstorm API error:', error);
                 hideTyping();
-                // Fallback to local generation
-                generateResponse(message);
+                // NO FALLBACK - CLAUDE REQUIRED
+                addMessage('❌ FATAL ERROR: Cannot connect to Claude. Brainstorming requires Claude Code CLI.', 'assistant');
             }
         }
 
@@ -460,66 +463,7 @@
             if (typing) typing.remove();
         }
 
-        function generateResponse(userMessage) {
-            const lowerMessage = userMessage.toLowerCase();
-            
-            // Generate contextual response with task suggestions
-            if (lowerMessage.includes('feature') || lowerMessage.includes('plan')) {
-                const response = document.createElement('div');
-                response.innerHTML = `
-                    <p>Great! Let's break down your feature into actionable tasks. Here are some suggestions:</p>
-                    ${createTaskSuggestions([
-                        { title: 'Design UI mockups', description: 'Create wireframes and design mockups for the new feature' },
-                        { title: 'Set up database schema', description: 'Design and implement required database changes' },
-                        { title: 'Implement API endpoints', description: 'Create backend endpoints for the feature' },
-                        { title: 'Build frontend components', description: 'Develop React/Vue/Angular components' },
-                        { title: 'Add tests', description: 'Write unit and integration tests' }
-                    ])}
-                `;
-                addMessage(response, 'assistant');
-            } else if (lowerMessage.includes('bug') || lowerMessage.includes('fix')) {
-                const response = document.createElement('div');
-                response.innerHTML = `
-                    <p>Let's tackle this bug systematically. Here's a debugging approach:</p>
-                    ${createTaskSuggestions([
-                        { title: 'Reproduce the bug', description: 'Create steps to consistently reproduce the issue' },
-                        { title: 'Add debug logging', description: 'Insert logging statements to trace the issue' },
-                        { title: 'Write failing test', description: 'Create a test that captures the bug' },
-                        { title: 'Implement fix', description: 'Fix the root cause of the issue' },
-                        { title: 'Verify fix', description: 'Ensure the fix works and doesn\'t break other features' }
-                    ])}
-                `;
-                addMessage(response, 'assistant');
-            } else if (lowerMessage.includes('architecture') || lowerMessage.includes('design')) {
-                const response = document.createElement('div');
-                response.innerHTML = `
-                    <p>Let's design a solid architecture. Consider these tasks:</p>
-                    ${createTaskSuggestions([
-                        { title: 'Define system requirements', description: 'Document functional and non-functional requirements' },
-                        { title: 'Create architecture diagram', description: 'Design high-level system architecture' },
-                        { title: 'Choose tech stack', description: 'Select appropriate technologies and frameworks' },
-                        { title: 'Design data flow', description: 'Map out how data moves through the system' },
-                        { title: 'Plan deployment strategy', description: 'Define CI/CD and deployment approach' }
-                    ])}
-                `;
-                addMessage(response, 'assistant');
-            } else {
-                // Generic response
-                const response = document.createElement('div');
-                response.innerHTML = `
-                    <p>I understand you want to work on: "${userMessage}"</p>
-                    <p>Let me suggest some tasks to get started:</p>
-                    ${createTaskSuggestions([
-                        { title: 'Research requirements', description: 'Gather and document project requirements' },
-                        { title: 'Create project plan', description: 'Outline milestones and deliverables' },
-                        { title: 'Set up development environment', description: 'Configure tools and dependencies' },
-                        { title: 'Build MVP', description: 'Create a minimal viable product' },
-                        { title: 'Gather feedback', description: 'Test with users and collect feedback' }
-                    ])}
-                `;
-                addMessage(response, 'assistant');
-            }
-        }
+        // REMOVED ALL MOCK RESPONSE GENERATION - CLAUDE ONLY
 
         function createTaskSuggestions(tasks) {
             let html = '<div style="margin-top: 12px;">';
@@ -601,8 +545,8 @@
                         statusDot.style.background = '#10b981';
                         statusText.textContent = 'Claude Connected';
                     } else {
-                        statusDot.style.background = '#f59e0b';
-                        statusText.textContent = 'AI Ready (Mock Mode)';
+                        statusDot.style.background = '#ef4444';
+                        statusText.textContent = 'CLAUDE REQUIRED - NOT AVAILABLE';
                     }
                 } else {
                     statusDot.style.background = '#ef4444';

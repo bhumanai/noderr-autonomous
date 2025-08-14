@@ -233,64 +233,40 @@ Suggest 3-5 specific, actionable development tasks. Format as JSON array:
 Only return the JSON array, nothing else."""
     
     try:
-        # Try to communicate with Claude via inject endpoint
+        # CLAUDE ONLY - NO FALLBACK
         inject_response = requests.post(
             'http://localhost:8082/inject',
             json={'command': claude_prompt},
             timeout=5
         )
         
-        if inject_response.ok:
-            # Get Claude's response
-            time.sleep(1)
-            status_response = requests.get('http://localhost:8082/status', timeout=3)
+        if not inject_response.ok:
+            return jsonify({'error': 'Claude Code CLI is not available', 'success': False}), 503
+        
+        # Get Claude's response
+        time.sleep(1)
+        status_response = requests.get('http://localhost:8082/status', timeout=3)
+        
+        if not status_response.ok:
+            return jsonify({'error': 'Failed to get Claude response', 'success': False}), 503
             
-            if status_response.ok:
-                output = status_response.json().get('current_output', '')
-                # Try to extract JSON
-                json_match = re.search(r'\[.*?\]', output, re.DOTALL)
-                if json_match:
-                    try:
-                        tasks = json.loads(json_match.group())
-                        return jsonify({'success': True, 'tasks': tasks, 'claude': True})
-                    except:
-                        pass
-    except:
-        pass
-    
-    # Fallback to mock suggestions
-    return generate_mock_suggestions(message)
+        output = status_response.json().get('current_output', '')
+        
+        # Try to extract JSON
+        json_match = re.search(r'\[.*?\]', output, re.DOTALL)
+        if json_match:
+            try:
+                tasks = json.loads(json_match.group())
+                return jsonify({'success': True, 'tasks': tasks, 'claude': True})
+            except:
+                return jsonify({'error': 'Failed to parse Claude response', 'success': False}), 503
+        
+        return jsonify({'error': 'Claude did not provide valid response', 'success': False}), 503
+        
+    except Exception as e:
+        return jsonify({'error': f'Claude is not available: {str(e)}', 'success': False}), 503
 
-def generate_mock_suggestions(message):
-    """Generate mock task suggestions when Claude is not available"""
-    lower_msg = message.lower()
-    
-    if 'feature' in lower_msg or 'build' in lower_msg:
-        tasks = [
-            {'title': 'Design UI mockups', 'description': 'Create wireframes and design mockups'},
-            {'title': 'Set up database', 'description': 'Design and implement database schema'},
-            {'title': 'Create API endpoints', 'description': 'Build backend API for the feature'},
-            {'title': 'Build frontend', 'description': 'Develop frontend components'},
-            {'title': 'Add tests', 'description': 'Write unit and integration tests'}
-        ]
-    elif 'bug' in lower_msg or 'fix' in lower_msg:
-        tasks = [
-            {'title': 'Reproduce bug', 'description': 'Create steps to reproduce the issue'},
-            {'title': 'Add logging', 'description': 'Insert debug logging statements'},
-            {'title': 'Write test', 'description': 'Create test that captures the bug'},
-            {'title': 'Implement fix', 'description': 'Fix the root cause'},
-            {'title': 'Verify fix', 'description': 'Test the fix thoroughly'}
-        ]
-    else:
-        tasks = [
-            {'title': 'Research requirements', 'description': 'Gather project requirements'},
-            {'title': 'Create plan', 'description': 'Outline project milestones'},
-            {'title': 'Set up environment', 'description': 'Configure development tools'},
-            {'title': 'Build MVP', 'description': 'Create minimal viable product'},
-            {'title': 'Test and iterate', 'description': 'Gather feedback and improve'}
-        ]
-    
-    return jsonify({'success': True, 'tasks': tasks, 'claude': False})
+# NO MOCK MODE - REMOVED COMPLETELY
 
 @app.route('/', methods=['GET'])
 def index():
