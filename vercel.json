@@ -1,7 +1,10 @@
 {
   "version": 2,
-  "name": "noderr-ui",
   "builds": [
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node"
+    },
     {
       "src": "docs/**",
       "use": "@vercel/static"
@@ -9,11 +12,12 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/docs/$1"
     }
-  ],
-  "github": {
-    "silent": true
-  }
+  ]
 }

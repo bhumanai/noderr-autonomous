@@ -1,14 +1,14 @@
-// Production Configuration for Static Hosting
+// Production Configuration - Auto-detects deployment environment
 const CONFIG = {
-    // Using the live Fly.io endpoint as API
-    API_BASE_URL: 'https://uncle-frank-claude.fly.dev',
-    FALLBACK_API: 'https://uncle-frank-claude.fly.dev',
-    SSE_ENDPOINT: 'https://uncle-frank-claude.fly.dev/api/sse',
+    // Automatically use the current origin for API calls
+    API_BASE_URL: window.location.origin,
+    FALLBACK_API: window.location.origin,
+    SSE_ENDPOINT: `${window.location.origin}/api/sse`,
     ENVIRONMENT: 'production',
     FEATURES: {
         GIT_INTEGRATION: true,
         AUTO_COMMIT: true,
-        REAL_TIME_UPDATES: true
+        REAL_TIME_UPDATES: false // SSE not supported in serverless
     }
 };
 
