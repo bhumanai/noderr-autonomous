@@ -1,5 +1,5 @@
 #!/bin/bash
-API_URL="http://localhost:3002"
+API_URL="http://localhost:3000"
 echo "🚀 Starting Comprehensive End-to-End Test"
 echo "========================================="
 echo ""
