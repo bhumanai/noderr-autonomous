@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Brainstorm Integration</title>
+</head>
+<body>
+    <h1>Testing Brainstorm Integration</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testBrainstorm() {
+            const results = document.getElementById('results');
+            
+            // Test 1: Create project
+            const project = await fetch('http://localhost:3001/api/projects', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: 'Test Project', repo: 'test/repo'})
+            }).then(r => r.json());
+            
+            results.innerHTML += '<p>✅ Project created: ' + project.id + '</p>';
+            
+            // Test 2: Create brainstorm session
+            const session = await fetch('http://localhost:3001/api/brainstorm/sessions', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({projectId: project.id, title: 'Test Session'})
+            }).then(r => r.json());
+            
+            results.innerHTML += '<p>✅ Session created: ' + session.id + '</p>';
+            
+            // Test 3: Analyze message
+            const analysis = await fetch('http://localhost:3001/api/brainstorm/analyze', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    message: 'I want to add user authentication with OAuth',
+                    context: {}
+                })
+            }).then(r => r.json());
+            
+            results.innerHTML += '<p>✅ Analysis complete - Generated ' + analysis.tasks.length + ' tasks</p>';
+            results.innerHTML += '<p>Tasks: ' + analysis.tasks.map(t => t.description).join(', ') + '</p>';
+            
+            // Test 4: Create tasks from analysis
+            for (const task of analysis.tasks) {
+                const created = await fetch('http://localhost:3001/api/tasks', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        projectId: project.id,
+                        description: task.description,
+                        complexity: task.complexity,
+                        status: 'backlog'
+                    })
+                }).then(r => r.json());
+                
+                results.innerHTML += '<p>✅ Task created: ' + created.description + '</p>';
+            }
+            
+            results.innerHTML += '<h2>✅ All tests passed!</h2>';
+        }
+        
+        testBrainstorm().catch(err => {
+            document.getElementById('results').innerHTML = '<p>❌ Error: ' + err + '</p>';
+        });
+    </script>
+</body>
+</html>

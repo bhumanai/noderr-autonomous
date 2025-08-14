@@ -10,6 +10,8 @@ class BrainstormManager {
             considerations: []
         };
         this.aiState = 'idle';
+        // Initialize the advanced brainstorm engine
+        this.engine = typeof BrainstormEngine !== 'undefined' ? new BrainstormEngine() : null;
         this.init();
     }
 
@@ -222,14 +224,35 @@ class BrainstormManager {
         const thinkingDiv = this.addAIMessage('', true);
 
         try {
-            // Simulate AI processing (replace with actual API call)
-            const response = await this.simulateAIResponse(userMessage);
+            let response;
+            
+            // Use advanced engine if available, otherwise fall back to simulation
+            if (this.engine) {
+                // Use the advanced BrainstormEngine for deep analysis
+                const analysis = await this.engine.deepAnalyze(userMessage, this.contextData);
+                response = {
+                    message: analysis.message,
+                    context: analysis.context,
+                    tasks: analysis.tasks,
+                    questions: analysis.questions
+                };
+            } else {
+                // Fallback to simulation
+                response = await this.simulateAIResponse(userMessage);
+            }
             
             // Remove thinking indicator
             thinkingDiv.remove();
             
             // Add AI response
             this.addAIMessage(response.message);
+            
+            // If there are clarifying questions, add them
+            if (response.questions && response.questions.length > 0) {
+                const questionsMsg = '\n\nTo better understand your needs, can you clarify:\n' +
+                    response.questions.slice(0, 3).map((q, i) => `${i + 1}. ${q}`).join('\n');
+                this.addAIMessage(questionsMsg);
+            }
             
             // Update context
             if (response.context) {
@@ -248,6 +271,7 @@ class BrainstormManager {
                 this.saveSessions();
             }
         } catch (error) {
+            console.error('Error in processWithAI:', error);
             thinkingDiv.remove();
             this.addAIMessage('Sorry, I encountered an error processing your request. Please try again.');
         }
@@ -677,9 +701,14 @@ The more context you provide, the better I can help you break this down into act
                 projectId: projectId,
                 description: taskData.description,
                 status: 'backlog',
-                complexity: taskData.complexity,
-                estimatedTime: taskData.estimatedTime,
+                complexity: taskData.complexity || 'medium',
+                estimatedTime: taskData.estimatedTime || '1h',
                 dependencies: taskData.dependencies || [],
+                phase: taskData.phase || null,
+                skills: taskData.skills || [],
+                risk: taskData.risk || 'low',
+                priority: taskData.priority || 'medium',
+                resources: taskData.resources || [],
                 source: 'brainstorm'
             })
         });

@@ -732,5 +732,30 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-// Export for debugging
+// Create task manager instance
+class TaskManager {
+    constructor() {
+        this.tasks = [];
+    }
+    
+    async loadTasks() {
+        // Reload tasks from current project
+        const projectId = AppState.currentProject?.id;
+        if (!projectId) return;
+        
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/tasks?projectId=${projectId}`);
+            if (response.ok) {
+                this.tasks = await response.json();
+                updateTaskCounts();
+                renderTasks();
+            }
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+        }
+    }
+}
+
+// Export for debugging and integration
 window.AppState = AppState;
+window.taskManager = new TaskManager();
