@@ -272,12 +272,13 @@ def serve_test_page():
     </div>
     <script>
         const API_BASE = window.location.origin;
+        const RELAY_BASE = window.location.pathname.includes('/relay/test') ? '/relay' : '';
         checkStatus();
         setInterval(checkStatus, 10000);
 
         async function checkStatus() {
             try {
-                const response = await fetch(`${API_BASE}/health`);
+                const response = await fetch(`${API_BASE}${RELAY_BASE}/health`);
                 const data = await response.json();
                 if (data.ready) {
                     updateStatus('ready', 'System Ready - Both Claudes Running');
@@ -309,7 +310,7 @@ def serve_test_page():
             document.getElementById('sendBtn').disabled = true;
             
             try {
-                const response = await fetch(`${API_BASE}/relay`, {
+                const response = await fetch(`${API_BASE}${RELAY_BASE}/relay`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message })
