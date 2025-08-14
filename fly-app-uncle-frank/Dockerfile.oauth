@@ -1,0 +1,46 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl git tmux python3 python3-pip supervisor wget \
+    ca-certificates sudo nodejs npm nginx \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir flask flask-cors gunicorn requests
+
+# Install Claude CLI
+RUN npm install -g @anthropic-ai/claude-code || \
+    curl -fsSL https://claude.ai/install.sh | bash || \
+    echo "Claude CLI installation - will complete on first run"
+
+# Create claude user
+RUN useradd -m -s /bin/bash claude-user && \
+    echo "claude-user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
+    mkdir -p /workspace /data /app/ui && \
+    chown -R claude-user:claude-user /workspace /data
+
+WORKDIR /app
+
+# Copy application files
+COPY inject_agent.py /app/
+COPY oauth_handler.py /app/
+COPY supervisor-oauth.conf /etc/supervisor/conf.d/supervisor.conf
+COPY nginx.conf /etc/nginx/sites-available/default
+
+# Copy UI
+COPY ../ui/oauth-auth.html /app/ui/
+
+# Make everything accessible
+RUN chmod +x /app/*.py
+
+EXPOSE 80 8080 8085
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/oauth/health || exit 1
+
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
