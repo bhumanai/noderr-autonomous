@@ -58,7 +58,11 @@ COPY inject_agent_cors.py /app/inject_agent.py
 COPY noderr_api.py /app/
 COPY claude_auth_handler.py /app/
 COPY claude_relay.py /app/
+COPY claude_relay_simple.py /app/
 COPY completion_monitor.py /app/
+
+# Copy all scripts to both locations for compatibility
+COPY scripts/ /app/scripts/
 COPY scripts/start.sh /app/
 COPY scripts/start-claude-relay.sh /app/
 COPY scripts/init-claude.sh /app/
@@ -67,13 +71,21 @@ COPY scripts/save-claude-config.sh /app/
 COPY scripts/save-claude-auth.sh /app/
 COPY scripts/restore-claude-auth.sh /app/
 COPY scripts/healthcheck.sh /app/
-COPY supervisor.conf /etc/supervisor/conf.d/
+COPY scripts/install-claunch.sh /app/
+COPY scripts/manage-claunch.sh /app/
 
-# Make scripts executable
-RUN chmod +x /app/start.sh /app/start-claude-relay.sh /app/init-claude.sh /app/ensure-claude.sh /app/save-claude-config.sh /app/save-claude-auth.sh /app/restore-claude-auth.sh /app/healthcheck.sh
+# Copy supervisor configs
+COPY supervisor.conf /etc/supervisor/conf.d/
+COPY supervisor-claunch.conf /etc/supervisor/conf.d/supervisor-claunch.conf.disabled
+
+# Make all scripts executable
+RUN chmod +x /app/*.sh /app/scripts/*.sh 2>/dev/null || true
+
+# Install claunch
+RUN bash /app/install-claunch.sh || echo "Claunch installation will complete on first run"
 
 # Expose ports
-EXPOSE 8080 8081 8084
+EXPOSE 8080 8081 8084 8085
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
