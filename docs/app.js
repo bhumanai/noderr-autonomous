@@ -142,6 +142,10 @@ function setupEventListeners() {
     document.getElementById('approveTaskBtn').addEventListener('click', approveTask);
     document.getElementById('reviseTaskBtn').addEventListener('click', reviseTask);
     
+    // Brainstorming
+    document.getElementById('brainstormBtn')?.addEventListener('click', () => showModal('brainstormModal'));
+    document.getElementById('closeBrainstorm')?.addEventListener('click', () => hideModal('brainstormModal'));
+    
     // Settings
     elements.settingsBtn.addEventListener('click', () => showModal('settingsModal'));
     document.getElementById('saveSettings').addEventListener('click', saveSettings);
@@ -838,6 +842,18 @@ window.addEventListener('resize', checkMobileView);
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && !AppState.backendOnline) {
         window.location.reload(); // Try to reconnect
+    }
+});
+
+// Handle messages from brainstorming iframe
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'task-created' && event.data.task) {
+        // Check if task already exists
+        if (!AppState.tasks.find(t => t.id === event.data.task.id)) {
+            AppState.tasks.push(event.data.task);
+            renderTasks();
+            showToast('Task created from brainstorming', 'success');
+        }
     }
 });
 
