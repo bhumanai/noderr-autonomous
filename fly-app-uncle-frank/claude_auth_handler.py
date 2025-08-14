@@ -209,75 +209,69 @@ def verify_auth():
     
     # First check if Claude tmux session is running
     try:
-        # Check for running tmux session
-        tmux_check = subprocess.run(
-            ['sudo', '-u', 'claude-user', 'tmux', 'has-session', '-t', 'claude-code'],
+        # Check for any tmux sessions
+        list_result = subprocess.run(
+            ['sudo', '-u', 'claude-user', 'tmux', 'list-sessions'],
             capture_output=True,
+            text=True,
             timeout=5
         )
         
-        if tmux_check.returncode == 0:
-            # Session exists, check if Claude is responsive
+        # Look for claude-code session or any claude-auth session
+        if list_result.returncode == 0 and ('claude-code' in list_result.stdout or 'claude-auth' in list_result.stdout):
+            # Get the session name
+            session_name = 'claude-code'
+            if 'claude-auth' in list_result.stdout and 'claude-code' not in list_result.stdout:
+                # Extract claude-auth session name
+                for line in list_result.stdout.split('\n'):
+                    if 'claude-auth' in line:
+                        session_name = line.split(':')[0]
+                        break
+            
             try:
-                # Capture current state
+                # Capture current state - with shorter timeout
                 capture_result = subprocess.run(
-                    ['sudo', '-u', 'claude-user', 'tmux', 'capture-pane', '-t', 'claude-code', '-p'],
+                    ['sudo', '-u', 'claude-user', 'tmux', 'capture-pane', '-t', session_name, '-p'],
                     capture_output=True,
                     text=True,
-                    timeout=10
+                    timeout=5
                 )
                 
                 output = capture_result.stdout.lower()
                 
-                # Check if Claude is at a ready prompt
-                if 'bypass permissions on' in output and '>' in output:
-                    # Claude is running and ready
+                # Check various indicators that Claude is running
+                claude_indicators = [
+                    'bypass permissions on',
+                    'claude code',
+                    'welcome to claude',
+                    '> echo',  # Has executed commands
+                    'preview',  # Showing preview
+                    'cwd:'  # Shows working directory
+                ]
+                
+                if any(indicator in output for indicator in claude_indicators):
+                    # Claude is running
                     return jsonify({
                         'authenticated': True,
                         'user': 'claude-user',
                         'method': 'tmux_session_active',
+                        'session': session_name,
                         'output': 'Claude CLI is running in tmux session'
                     })
-            except:
+            except Exception as e:
+                # Log but don't fail
                 pass
-    except:
+    except Exception as e:
+        # Log but don't fail
         pass
     
-    # Fallback to checking auth status directly
-    try:
-        # Check Claude auth status as claude-user
-        result = subprocess.run(
-            ['sudo', '-u', 'claude-user', 'claude', 'auth', 'status'],
-            capture_output=True,
-            text=True,
-            timeout=30
-        )
-        
-        authenticated = 'Authenticated' in result.stdout or 'logged in' in result.stdout.lower()
-        
-        # Try to get user info
-        user_info = None
-        if authenticated:
-            try:
-                # Try to extract user email or ID from status
-                email_match = re.search(r'[\w\.-]+@[\w\.-]+', result.stdout)
-                if email_match:
-                    user_info = email_match.group()
-            except:
-                pass
-        
-        return jsonify({
-            'authenticated': authenticated,
-            'user': user_info,
-            'method': 'auth_status_check',
-            'output': result.stdout
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'authenticated': False,
-            'error': str(e)
-        })
+    # Don't try auth status check if Claude is running interactively
+    # It will timeout because Claude can't respond while in interactive mode
+    return jsonify({
+        'authenticated': False,
+        'method': 'no_tmux_session',
+        'message': 'No active Claude session found. Please authenticate.'
+    })
 
 @app.route('/claude/auth/logout', methods=['POST', 'OPTIONS'])
 def logout():
