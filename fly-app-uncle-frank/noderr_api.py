@@ -370,6 +370,28 @@ def proxy_relay_test():
     except Exception as e:
         return f'<h1>Error: Relay service unavailable - {str(e)}</h1>', 503
 
+@app.route('/simple/test', methods=['GET'])
+def proxy_simple_test():
+    """Proxy to simple relay test page"""
+    try:
+        resp = requests.get('http://localhost:8085/test', timeout=5)
+        return resp.text, resp.status_code, {'Content-Type': 'text/html'}
+    except Exception as e:
+        return f'<h1>Error: Simple relay unavailable - {str(e)}</h1>', 503
+
+@app.route('/simple/<path:path>', methods=['GET', 'POST'])
+def proxy_simple_relay(path):
+    """Proxy to simple relay service"""
+    try:
+        url = f'http://localhost:8085/{path}'
+        if request.method == 'POST':
+            resp = requests.post(url, json=request.json, timeout=10)
+        else:
+            resp = requests.get(url, timeout=10)
+        return resp.json(), resp.status_code
+    except Exception as e:
+        return jsonify({'error': f'Simple relay unavailable: {str(e)}'}), 503
+
 @app.route('/claude/auth/<path:path>', methods=['GET', 'POST', 'OPTIONS'])
 def proxy_claude_auth(path):
     """Proxy requests to Claude auth handler on port 8083"""
