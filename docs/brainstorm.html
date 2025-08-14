@@ -278,8 +278,8 @@
         <div class="chat-header">
             <h1>🧠 Brainstorming Assistant</h1>
             <div class="status">
-                <span class="status-dot"></span>
-                <span>AI Ready</span>
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Checking Claude...</span>
             </div>
         </div>
 
@@ -334,8 +334,14 @@
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
 
         let tasksCreated = 0;
+        let claudeAvailable = false;
+
+        // Check Claude availability on load
+        checkClaudeStatus();
 
         // Send message on Enter key
         messageInput.addEventListener('keypress', (e) => {
@@ -347,7 +353,7 @@
 
         sendButton.addEventListener('click', sendMessage);
 
-        function sendMessage() {
+        async function sendMessage() {
             const message = messageInput.value.trim();
             if (!message) return;
 
@@ -358,11 +364,42 @@
             // Show typing indicator
             showTyping();
 
-            // Simulate AI response (replace with actual API call)
-            setTimeout(() => {
+            try {
+                // Call the real brainstorm API
+                const response = await fetch(`${API_BASE}/brainstorm`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
                 hideTyping();
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.tasks && data.tasks.length > 0) {
+                        // Show Claude's response with task suggestions
+                        const responseDiv = document.createElement('div');
+                        const isRealClaude = data.claude === true;
+                        responseDiv.innerHTML = `
+                            <p>${isRealClaude ? '✨ Claude suggests these tasks:' : 'Here are some task suggestions:'}</p>
+                            ${createTaskSuggestions(data.tasks)}
+                            ${isRealClaude ? '<p style="margin-top: 8px; font-size: 0.85rem; color: #9ca3af;">Powered by Claude AI</p>' : ''}
+                        `;
+                        addMessage(responseDiv, 'assistant');
+                    } else {
+                        // Fallback to local generation if no tasks returned
+                        generateResponse(message);
+                    }
+                } else {
+                    // Error - use local generation
+                    generateResponse(message);
+                }
+            } catch (error) {
+                console.error('Brainstorm API error:', error);
+                hideTyping();
+                // Fallback to local generation
                 generateResponse(message);
-            }, 1500);
+            }
         }
 
         function sendSuggestion(text) {
@@ -552,6 +589,31 @@
             counter.textContent = `✅ ${tasksCreated} task${tasksCreated > 1 ? 's' : ''} created`;
         }
 
+        // Check Claude availability
+        async function checkClaudeStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    claudeAvailable = data.claude_session === true;
+                    
+                    if (claudeAvailable) {
+                        statusDot.style.background = '#10b981';
+                        statusText.textContent = 'Claude Connected';
+                    } else {
+                        statusDot.style.background = '#f59e0b';
+                        statusText.textContent = 'AI Ready (Mock Mode)';
+                    }
+                } else {
+                    statusDot.style.background = '#ef4444';
+                    statusText.textContent = 'Backend Offline';
+                }
+            } catch (error) {
+                statusDot.style.background = '#ef4444';
+                statusText.textContent = 'Connection Error';
+            }
+        }
+
         // Handle messages from parent window
         window.addEventListener('message', (event) => {
             if (event.data.type === 'project-changed') {
@@ -561,6 +623,9 @@
                 if (counter) counter.remove();
             }
         });
+
+        // Periodically check Claude status
+        setInterval(checkClaudeStatus, 30000);
     </script>
 </body>
 </html>
