@@ -415,6 +415,27 @@ def proxy_claude_auth(path):
     except Exception as e:
         return jsonify({'error': f'Auth service unavailable: {str(e)}'}), 503
 
+@app.route('/test', methods=['GET'])
+def relay_test():
+    """Direct proxy to relay test page"""
+    try:
+        resp = requests.get('http://localhost:8085/test', timeout=5)
+        return resp.text, resp.status_code, {'Content-Type': 'text/html'}
+    except Exception as e:
+        return f'''
+        <html>
+        <body style="font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px;">
+            <h1>Relay Service Not Running</h1>
+            <p>Error: {str(e)}</p>
+            <p>The relay service on port 8085 is not responding.</p>
+            <p>SSH into the server and run:</p>
+            <pre style="background: #000; padding: 10px;">
+python3 /app/claude_relay_simple.py &
+            </pre>
+        </body>
+        </html>
+        ''', 503
+
 @app.route('/', methods=['GET'])
 def index():
     """Root endpoint"""
