@@ -29,35 +29,84 @@ def start_auth():
     try:
         # Generate session ID
         session_id = str(uuid.uuid4())
+        tmux_session = "claude-auth-" + session_id[:8]
         
-        # Start claude auth login in background
+        # Start claude auth login in tmux session to handle interactive flow
         def run_auth():
             try:
-                # Run claude auth login and capture output
-                result = subprocess.run(
-                    ['claude', 'auth', 'login'],
+                # Kill any existing auth tmux session
+                subprocess.run(
+                    ['sudo', '-u', 'claude-user', 'tmux', 'kill-session', '-t', tmux_session],
+                    capture_output=True,
+                    timeout=5
+                )
+            except:
+                pass  # Session might not exist
+            
+            try:
+                # Create new tmux session for auth
+                subprocess.run(
+                    ['sudo', '-u', 'claude-user', 'tmux', 'new-session', '-d', '-s', tmux_session,
+                     'claude auth login'],
                     capture_output=True,
                     text=True,
-                    timeout=60
+                    timeout=5
                 )
                 
-                # Extract auth URL from output
-                output = result.stdout + result.stderr
-                url_match = re.search(r'https://[^\s]+', output)
+                # Wait for output to appear
+                time.sleep(3)
                 
-                if url_match:
-                    auth_url = url_match.group()
+                # Capture output from tmux session
+                result = subprocess.run(
+                    ['sudo', '-u', 'claude-user', 'tmux', 'capture-pane', '-t', tmux_session, '-p'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                
+                output = result.stdout
+                
+                # Look for auth URL patterns
+                # Claude CLI typically shows: "Visit https://claude.ai/auth/..."
+                url_patterns = [
+                    r'https://claude\.ai/auth/[^\s]+',
+                    r'https://[^\s]*claude[^\s]*auth[^\s]+',
+                    r'Visit:\s*(https://[^\s]+)',
+                    r'Open.*browser.*:\s*(https://[^\s]+)'
+                ]
+                
+                auth_url = None
+                for pattern in url_patterns:
+                    match = re.search(pattern, output, re.IGNORECASE)
+                    if match:
+                        auth_url = match.group(1) if '(' in pattern else match.group()
+                        break
+                
+                if auth_url:
                     auth_sessions[session_id] = {
                         'status': 'pending',
                         'auth_url': auth_url,
+                        'tmux_session': tmux_session,
                         'created': time.time()
                     }
                 else:
-                    auth_sessions[session_id] = {
-                        'status': 'error',
-                        'error': 'Could not extract auth URL',
-                        'output': output
-                    }
+                    # Try device code flow if available
+                    device_code_match = re.search(r'code:\s*([A-Z0-9-]+)', output, re.IGNORECASE)
+                    if device_code_match:
+                        auth_sessions[session_id] = {
+                            'status': 'device_code',
+                            'device_code': device_code_match.group(1),
+                            'verification_url': 'https://claude.ai/device',
+                            'tmux_session': tmux_session,
+                            'output': output
+                        }
+                    else:
+                        auth_sessions[session_id] = {
+                            'status': 'error',
+                            'error': 'Could not extract auth URL or device code',
+                            'output': output,
+                            'tmux_session': tmux_session
+                        }
             except subprocess.TimeoutExpired:
                 auth_sessions[session_id] = {
                     'status': 'timeout',
@@ -73,8 +122,8 @@ def start_auth():
         thread = threading.Thread(target=run_auth)
         thread.start()
         
-        # Wait briefly for URL to be available
-        time.sleep(2)
+        # Wait for initial setup
+        time.sleep(4)
         
         # Return session info
         if session_id in auth_sessions:
@@ -103,10 +152,39 @@ def check_auth_status(session_id):
     
     session = auth_sessions[session_id]
     
-    # Check if Claude is now authenticated
+    # If there's a tmux session, check its output for updates
+    if 'tmux_session' in session:
+        try:
+            result = subprocess.run(
+                ['sudo', '-u', 'claude-user', 'tmux', 'capture-pane', '-t', session['tmux_session'], '-p'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            output = result.stdout
+            session['latest_output'] = output
+            
+            # Check for success patterns
+            if 'successfully' in output.lower() or 'authenticated' in output.lower():
+                session['status'] = 'authenticated'
+                
+                # Clean up tmux session
+                try:
+                    subprocess.run(
+                        ['sudo', '-u', 'claude-user', 'tmux', 'kill-session', '-t', session['tmux_session']],
+                        capture_output=True,
+                        timeout=5
+                    )
+                except:
+                    pass
+        except:
+            pass
+    
+    # Check if Claude is now authenticated globally
     try:
         result = subprocess.run(
-            ['claude', 'auth', 'status'],
+            ['sudo', '-u', 'claude-user', 'claude', 'auth', 'status'],
             capture_output=True,
             text=True,
             timeout=5
@@ -130,9 +208,9 @@ def verify_auth():
         return '', 204
     
     try:
-        # Check Claude auth status
+        # Check Claude auth status as claude-user
         result = subprocess.run(
-            ['claude', 'auth', 'status'],
+            ['sudo', '-u', 'claude-user', 'claude', 'auth', 'status'],
             capture_output=True,
             text=True,
             timeout=5
@@ -171,7 +249,7 @@ def logout():
     
     try:
         result = subprocess.run(
-            ['claude', 'auth', 'logout'],
+            ['sudo', '-u', 'claude-user', 'claude', 'auth', 'logout'],
             capture_output=True,
             text=True,
             timeout=10
@@ -198,7 +276,7 @@ def health():
     # Check Claude authentication
     try:
         result = subprocess.run(
-            ['claude', 'auth', 'status'],
+            ['sudo', '-u', 'claude-user', 'claude', 'auth', 'status'],
             capture_output=True,
             text=True,
             timeout=5
