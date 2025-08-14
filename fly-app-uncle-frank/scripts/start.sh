@@ -36,6 +36,12 @@ create_session() {
 main() {
     echo "Starting Claude Code CLI in tmux..."
     
+    # Restore Claude authentication from persistent storage
+    if [ -f "/app/restore-claude-auth.sh" ]; then
+        echo "Restoring Claude authentication..."
+        /app/restore-claude-auth.sh
+    fi
+    
     # Initialize Claude config from persistent storage
     /app/init-claude.sh
     
@@ -60,9 +66,14 @@ main() {
             create_session
         fi
         
-        # Save config every 5 minutes
+        # Save config and auth every 5 minutes
         if [ -f "/app/save-claude-config.sh" ]; then
             /app/save-claude-config.sh >/dev/null 2>&1
+        fi
+        
+        # Save authentication tokens
+        if [ -f "/app/save-claude-auth.sh" ]; then
+            /app/save-claude-auth.sh >/dev/null 2>&1
         fi
         
         sleep 300  # Check every 5 minutes

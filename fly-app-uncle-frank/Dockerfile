@@ -62,11 +62,13 @@ COPY scripts/start.sh /app/
 COPY scripts/init-claude.sh /app/
 COPY scripts/ensure-claude.sh /app/
 COPY scripts/save-claude-config.sh /app/
+COPY scripts/save-claude-auth.sh /app/
+COPY scripts/restore-claude-auth.sh /app/
 COPY scripts/healthcheck.sh /app/
 COPY supervisor.conf /etc/supervisor/conf.d/
 
 # Make scripts executable
-RUN chmod +x /app/start.sh /app/init-claude.sh /app/ensure-claude.sh /app/save-claude-config.sh /app/healthcheck.sh
+RUN chmod +x /app/start.sh /app/init-claude.sh /app/ensure-claude.sh /app/save-claude-config.sh /app/save-claude-auth.sh /app/restore-claude-auth.sh /app/healthcheck.sh
 
 # Expose ports
 EXPOSE 8080 8081
