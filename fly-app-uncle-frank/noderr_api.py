@@ -38,9 +38,32 @@ def health():
     """Health check endpoint"""
     if request.method == 'OPTIONS':
         return '', 204
+    
+    # Check Claude status via the auth service
+    claude_session = False
+    try:
+        # Check with claude-auth service
+        resp = requests.get('http://localhost:8083/claude/auth/verify', timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            claude_session = data.get('authenticated', False)
+    except:
+        # If auth service is down, check tmux directly as fallback
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['sudo', '-u', 'claude-user', 'tmux', 'has-session', '-t', 'claude-code'],
+                capture_output=True,
+                timeout=3
+            )
+            claude_session = (result.returncode == 0)
+        except:
+            claude_session = False
+    
     return jsonify({
         'status': 'healthy',
         'cors_enabled': True,
+        'claude_session': claude_session,  # This is what the frontend expects
         'timestamp': datetime.now().isoformat()
     })
 
