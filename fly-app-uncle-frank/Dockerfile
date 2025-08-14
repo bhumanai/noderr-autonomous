@@ -31,10 +31,18 @@ WORKDIR /app
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs
 
-# Install Claude Code CLI via npm
+# Install Claude Code CLI - try multiple methods
 RUN npm install -g @anthropic-ai/claude-code || \
+    npm install -g claude || \
     (curl -fsSL https://claude.ai/install.sh | bash) || \
-    echo "Claude Code CLI installation failed - manual setup required"
+    (wget -qO- https://claude.ai/install.sh | bash) || \
+    echo "Claude Code CLI installation failed - will retry in start script"
+
+# Ensure claude binary is in PATH
+RUN which claude || \
+    ln -s /usr/local/bin/claude /usr/bin/claude || \
+    ln -s /root/.local/bin/claude /usr/bin/claude || \
+    echo "Claude binary not found yet"
 
 # Create claude-user and workspace
 RUN useradd -m -s /bin/bash claude-user && \
@@ -52,12 +60,13 @@ COPY claude_auth_handler.py /app/
 COPY completion_monitor.py /app/
 COPY scripts/start.sh /app/
 COPY scripts/init-claude.sh /app/
+COPY scripts/ensure-claude.sh /app/
 COPY scripts/save-claude-config.sh /app/
 COPY scripts/healthcheck.sh /app/
 COPY supervisor.conf /etc/supervisor/conf.d/
 
 # Make scripts executable
-RUN chmod +x /app/start.sh /app/init-claude.sh /app/save-claude-config.sh /app/healthcheck.sh
+RUN chmod +x /app/start.sh /app/init-claude.sh /app/ensure-claude.sh /app/save-claude-config.sh /app/healthcheck.sh
 
 # Expose ports
 EXPOSE 8080 8081
