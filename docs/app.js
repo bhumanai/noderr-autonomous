@@ -3,8 +3,8 @@
 
 // Configuration
 const API_BASE = window.location.hostname === 'localhost' 
-    ? 'http://localhost:8787/api' 
-    : '/api';
+    ? 'http://localhost:8081' 
+    : 'https://uncle-frank-claude.fly.dev';
 
 // Application State
 const AppState = {
