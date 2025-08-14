@@ -665,10 +665,13 @@ function setupRealtimeUpdates() {
     
     AppState.eventSource.addEventListener('task:created', (e) => {
         const task = JSON.parse(e.data);
-        AppState.tasks.push(task);
-        renderTasks();
-        if (AppState.settings.soundNotifications) playSound('new');
-        showToast(`New task: ${task.description}`, 'info');
+        // Check if task already exists (avoid duplicates from our own creation)
+        if (!AppState.tasks.find(t => t.id === task.id)) {
+            AppState.tasks.push(task);
+            renderTasks();
+            if (AppState.settings.soundNotifications) playSound('new');
+            showToast(`New task: ${task.description}`, 'info');
+        }
     });
     
     AppState.eventSource.addEventListener('task:updated', (e) => {
