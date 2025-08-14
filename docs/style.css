@@ -1116,3 +1116,47 @@ body {
         flex-direction: column;
     }
 }
+
+/* Task Approval UI Styles */
+.generated-task {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: start;
+}
+
+.generated-task.task-approved {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+
+.generated-task.task-rejected {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.task-approval-controls {
+    display: flex;
+    align-items: center;
+    padding-top: 2px;
+}
+
+.task-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.btn-secondary:disabled,
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.task-actions {
+    gap: var(--spacing-xs);
+}
+
+.task-actions button {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+}

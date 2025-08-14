@@ -1,5 +1,14 @@
-// Vercel Serverless Function for Noderr API
+// Vercel Serverless Function for Noderr API with Real AI
 const cors = require('cors');
+
+// Import AI module if it exists
+let analyzeWithAI;
+try {
+    const aiModule = require('./brainstorm-ai');
+    analyzeWithAI = aiModule.analyzeWithAI;
+} catch (error) {
+    console.log('AI module not available, using fallback');
+}
 
 // In-memory storage (will reset on each cold start - use a database for production)
 let projects = global.projects || [];
@@ -203,42 +212,127 @@ module.exports = async (req, res) => {
     
     if (apiPath === 'brainstorm/analyze' && req.method === 'POST') {
         const message = req.body?.message || '';
+        const context = req.body?.context || {};
+        
+        // Use real AI if available
+        if (analyzeWithAI) {
+            try {
+                const aiResponse = await analyzeWithAI(message, context);
+                
+                // Format response for frontend
+                const response = {
+                    message: aiResponse.analysis,
+                    tasks: aiResponse.tasks.map(task => ({
+                        id: task.id,
+                        title: task.title,
+                        description: task.description || task.title,
+                        complexity: task.complexity,
+                        estimatedHours: task.estimatedHours,
+                        dependencies: task.dependencies,
+                        technicalDetails: task.technicalDetails,
+                        status: 'suggested',
+                        approvalStatus: 'pending'
+                    })),
+                    insights: [
+                        ...aiResponse.assumptions,
+                        ...aiResponse.risks
+                    ],
+                    clarifyingQuestions: aiResponse.clarifyingQuestions,
+                    requiresApproval: true
+                };
+                
+                res.json(response);
+                return;
+            } catch (error) {
+                console.error('AI analysis failed:', error);
+                // Fall through to basic response
+            }
+        }
+        
+        // Fallback response when AI is not available
         const lowerMessage = message.toLowerCase();
         let response = {
-            message: '',
+            message: 'I\'ll help you break this down into actionable tasks.',
             tasks: [],
-            insights: []
+            insights: [],
+            clarifyingQuestions: [
+                'What tech stack are you using?',
+                'What are the specific requirements?',
+                'What\'s your timeline?'
+            ],
+            requiresApproval: true
         };
         
-        if (lowerMessage.includes('feature') || lowerMessage.includes('add')) {
-            response.message = `Great idea! Let me analyze the requirements for this feature...`;
+        // Generate better fallback tasks
+        if (lowerMessage.includes('auth') || lowerMessage.includes('login') || lowerMessage.includes('sso')) {
             response.tasks = [
-                { description: 'Research similar implementations', complexity: 'low' },
-                { description: 'Design the architecture', complexity: 'medium' },
-                { description: 'Implement core functionality', complexity: 'high' },
-                { description: 'Add tests', complexity: 'medium' }
-            ];
-            response.insights = [
-                'Consider user experience implications',
-                'Check for existing patterns in codebase',
-                'Plan for scalability'
-            ];
-        } else if (lowerMessage.includes('bug') || lowerMessage.includes('fix')) {
-            response.message = `Let's systematically debug this issue...`;
-            response.tasks = [
-                { description: 'Reproduce the bug', complexity: 'low' },
-                { description: 'Identify root cause', complexity: 'medium' },
-                { description: 'Implement fix', complexity: 'medium' },
-                { description: 'Add regression test', complexity: 'low' }
-            ];
-            response.insights = [
-                'Check recent changes that might have caused this',
-                'Look for similar patterns elsewhere',
-                'Consider edge cases'
+                {
+                    id: `task-${Date.now()}-1`,
+                    title: 'Set up authentication database schema',
+                    description: 'Create users table with OAuth provider fields, add proper indexes',
+                    complexity: 'medium',
+                    estimatedHours: 2,
+                    dependencies: [],
+                    status: 'suggested'
+                },
+                {
+                    id: `task-${Date.now()}-2`,
+                    title: 'Implement OAuth 2.0 provider integration',
+                    description: 'Configure Google/GitHub OAuth, handle callbacks and token exchange',
+                    complexity: 'high',
+                    estimatedHours: 3,
+                    dependencies: [0],
+                    status: 'suggested'
+                },
+                {
+                    id: `task-${Date.now()}-3`,
+                    title: 'Create authentication API endpoints',
+                    description: 'Build login, callback, logout, and refresh token endpoints',
+                    complexity: 'medium',
+                    estimatedHours: 3,
+                    dependencies: [1],
+                    status: 'suggested'
+                },
+                {
+                    id: `task-${Date.now()}-4`,
+                    title: 'Build login UI components',
+                    description: 'Create login form, SSO buttons, error handling, loading states',
+                    complexity: 'low',
+                    estimatedHours: 2,
+                    dependencies: [2],
+                    status: 'suggested'
+                }
             ];
         } else {
-            response.message = `Interesting! Can you provide more details about what you want to achieve?`;
-            response.insights = ['Need more context to generate specific tasks'];
+            response.tasks = [
+                {
+                    id: `task-${Date.now()}-1`,
+                    title: 'Define and document requirements',
+                    description: 'Create detailed specs with acceptance criteria',
+                    complexity: 'low',
+                    estimatedHours: 2,
+                    dependencies: [],
+                    status: 'suggested'
+                },
+                {
+                    id: `task-${Date.now()}-2`,
+                    title: 'Design technical architecture',
+                    description: 'Create component diagram and data flow',
+                    complexity: 'medium',
+                    estimatedHours: 3,
+                    dependencies: [0],
+                    status: 'suggested'
+                },
+                {
+                    id: `task-${Date.now()}-3`,
+                    title: 'Implement core functionality',
+                    description: 'Build main feature following the architecture',
+                    complexity: 'high',
+                    estimatedHours: 4,
+                    dependencies: [1],
+                    status: 'suggested'
+                }
+            ];
         }
         
         res.json(response);

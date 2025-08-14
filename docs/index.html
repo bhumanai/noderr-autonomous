@@ -109,8 +109,10 @@
                         <div class="tasks-header">
                             <h3>Generated Tasks (<span id="taskGenCount">0</span>)</h3>
                             <div class="task-actions">
+                                <button id="approveAllBtn" class="btn-secondary" onclick="window.brainstormManager.approveAllTasks()">✅ All</button>
+                                <button id="rejectAllBtn" class="btn-secondary" onclick="window.brainstormManager.rejectAllTasks()">❌ None</button>
                                 <button id="refineTasksBtn" class="btn-secondary">🔄 Refine</button>
-                                <button id="exportTasksBtn" class="btn-primary">📤 Export to Kanban</button>
+                                <button id="exportTasksBtn" class="btn-primary" disabled>📤 Export to Kanban</button>
                             </div>
                         </div>
                         <div id="generatedTasks" class="generated-tasks">

@@ -621,7 +621,8 @@ The more context you provide, the better I can help you break this down into act
         const countSpan = document.getElementById('taskGenCount');
 
         if (countSpan) {
-            countSpan.textContent = this.generatedTasks.length;
+            const approvedCount = this.generatedTasks.filter(t => t.approvalStatus === 'approved').length;
+            countSpan.textContent = `${approvedCount}/${this.generatedTasks.length}`;
         }
 
         if (!tasksDiv) return;
@@ -631,29 +632,90 @@ The more context you provide, the better I can help you break this down into act
             return;
         }
 
-        tasksDiv.innerHTML = this.generatedTasks.map(task => `
-            <div class="generated-task">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div style="flex: 1;">
-                        <strong>${this.escapeHtml(task.description)}</strong>
-                        <span class="task-complexity complexity-${task.complexity}">
-                            ${task.complexity}
-                        </span>
-                    </div>
-                    <span style="color: #666; font-size: 0.875rem;">${task.estimatedTime || '?'}</span>
+        tasksDiv.innerHTML = this.generatedTasks.map((task, index) => `
+            <div class="generated-task ${task.approvalStatus === 'approved' ? 'task-approved' : task.approvalStatus === 'rejected' ? 'task-rejected' : ''}">
+                <div class="task-approval-controls">
+                    <input type="checkbox" 
+                           id="task-${task.id}" 
+                           ${task.approvalStatus === 'approved' ? 'checked' : ''}
+                           onchange="window.brainstormManager.toggleTaskApproval('${task.id}')"
+                           class="task-checkbox">
                 </div>
-                ${task.dependencies && task.dependencies.length > 0 ? `
-                    <div class="task-dependencies">
-                        Depends on: ${task.dependencies.join(', ')}
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <strong>${this.escapeHtml(task.title || task.description)}</strong>
+                            ${task.description && task.description !== task.title ? `
+                                <div style="color: #666; font-size: 0.875rem; margin-top: 4px;">
+                                    ${this.escapeHtml(task.description)}
+                                </div>
+                            ` : ''}
+                            ${task.technicalDetails ? `
+                                <div style="color: #888; font-size: 0.75rem; margin-top: 4px; font-style: italic;">
+                                    📝 ${this.escapeHtml(task.technicalDetails)}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="task-complexity complexity-${task.complexity}">
+                                ${task.complexity}
+                            </span>
+                            <div style="color: #666; font-size: 0.875rem; margin-top: 4px;">
+                                ${task.estimatedHours || task.estimatedTime || '2-4'}h
+                            </div>
+                        </div>
                     </div>
-                ` : ''}
+                    ${task.dependencies && task.dependencies.length > 0 ? `
+                        <div class="task-dependencies">
+                            ⚡ Depends on: Task ${task.dependencies.map(d => d + 1).join(', ')}
+                        </div>
+                    ` : ''}
+                </div>
             </div>
         `).join('');
+        
+        // Update export button state
+        const exportBtn = document.getElementById('exportTasksBtn');
+        if (exportBtn) {
+            const approvedTasks = this.generatedTasks.filter(t => t.approvalStatus === 'approved');
+            exportBtn.disabled = approvedTasks.length === 0;
+            exportBtn.textContent = approvedTasks.length > 0 
+                ? `📤 Export ${approvedTasks.length} Tasks to Kanban`
+                : '📤 Export to Kanban';
+        }
+    }
+    
+    toggleTaskApproval(taskId) {
+        const task = this.generatedTasks.find(t => t.id === taskId);
+        if (task) {
+            task.approvalStatus = task.approvalStatus === 'approved' ? 'pending' : 'approved';
+            this.renderGeneratedTasks();
+            this.saveSessions();
+        }
+    }
+    
+    approveAllTasks() {
+        this.generatedTasks.forEach(task => {
+            task.approvalStatus = 'approved';
+        });
+        this.renderGeneratedTasks();
+        this.saveSessions();
+    }
+    
+    rejectAllTasks() {
+        this.generatedTasks.forEach(task => {
+            task.approvalStatus = 'rejected';
+        });
+        this.renderGeneratedTasks();
+        this.saveSessions();
     }
 
     async exportTasks() {
-        if (this.generatedTasks.length === 0) {
-            this.showToast('No tasks to export', 'warning');
+        // Only export approved tasks
+        const approvedTasks = this.generatedTasks.filter(t => t.approvalStatus === 'approved');
+        
+        if (approvedTasks.length === 0) {
+            this.showToast('No approved tasks to export. Please select tasks first.', 'warning');
             return;
         }
 
@@ -667,12 +729,12 @@ The more context you provide, the better I can help you break this down into act
         }
 
         try {
-            // Export tasks to the backlog
-            for (const task of this.generatedTasks) {
+            // Export only approved tasks to the backlog
+            for (const task of approvedTasks) {
                 await this.createTask(projectId, task);
             }
 
-            this.showToast(`Exported ${this.generatedTasks.length} tasks to backlog`, 'success');
+            this.showToast(`Exported ${approvedTasks.length} approved tasks to backlog`, 'success');
             
             // Clear generated tasks after export
             this.generatedTasks = [];
