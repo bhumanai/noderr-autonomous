@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 RUN pip3 install --no-cache-dir \
     flask \
+    flask-cors \
     gunicorn \
     requests
 
@@ -45,7 +46,7 @@ RUN useradd -m -s /bin/bash claude-user && \
     chown -R claude-user:claude-user /data
 
 # Copy application files
-COPY inject_agent.py /app/
+COPY inject_agent_cors.py /app/inject_agent.py
 COPY completion_monitor.py /app/
 COPY scripts/start.sh /app/
 COPY scripts/init-claude.sh /app/
