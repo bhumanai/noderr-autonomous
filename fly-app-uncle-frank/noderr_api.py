@@ -268,6 +268,29 @@ Only return the JSON array, nothing else."""
 
 # NO MOCK MODE - REMOVED COMPLETELY
 
+@app.route('/claude/auth/<path:path>', methods=['GET', 'POST', 'OPTIONS'])
+def proxy_claude_auth(path):
+    """Proxy requests to Claude auth handler on port 8083"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    try:
+        # Forward to auth handler
+        auth_url = f'http://localhost:8083/claude/auth/{path}'
+        
+        if request.method == 'GET':
+            resp = requests.get(auth_url, timeout=10)
+        else:
+            resp = requests.post(
+                auth_url,
+                json=request.json if request.is_json else None,
+                timeout=10
+            )
+        
+        return resp.json(), resp.status_code
+    except Exception as e:
+        return jsonify({'error': f'Auth service unavailable: {str(e)}'}), 503
+
 @app.route('/', methods=['GET'])
 def index():
     """Root endpoint"""
@@ -279,6 +302,7 @@ def index():
             '/projects',
             '/tasks',
             '/brainstorm',
+            '/claude/auth/*',
             '/sse'
         ],
         'cors_enabled': True
