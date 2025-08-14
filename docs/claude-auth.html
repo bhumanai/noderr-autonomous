@@ -289,6 +289,27 @@
                     
                     // Auto-check status every 3 seconds
                     startStatusPolling();
+                } else if (data.status === 'device_code') {
+                    // Show device code flow
+                    document.getElementById('authUrlBox').innerHTML = `
+                        <strong>Device Code Authentication:</strong><br><br>
+                        1. Open <a href="${data.verification_url || 'https://claude.ai/device'}" target="_blank" style="color: #667eea;">
+                            ${data.verification_url || 'https://claude.ai/device'}
+                        </a><br><br>
+                        2. Enter this code: <strong style="font-size: 1.2em; color: #667eea;">${data.device_code}</strong><br><br>
+                        ${data.output ? `<details><summary>Debug Output</summary><pre style="font-size: 0.8em;">${data.output}</pre></details>` : ''}
+                    `;
+                    
+                    updateStatus('pending', 'Enter device code to authenticate...');
+                    startStatusPolling();
+                } else if (data.status === 'error' && data.output) {
+                    // Show error with output
+                    document.getElementById('authUrlBox').innerHTML = `
+                        <strong>Error starting authentication:</strong><br><br>
+                        <pre style="font-size: 0.9em; color: #ef4444;">${data.error}</pre>
+                        ${data.output ? `<details><summary>Debug Output</summary><pre style="font-size: 0.8em;">${data.output}</pre></details>` : ''}
+                    `;
+                    showError('Authentication failed - see details above');
                 } else {
                     // Keep checking for URL
                     setTimeout(() => checkSessionStatus(), 2000);
@@ -312,11 +333,22 @@
                         <a href="${data.auth_url}" target="_blank" style="color: #667eea;">
                             ${data.auth_url}
                         </a>
+                        ${data.latest_output ? `<details><summary>Latest Output</summary><pre style="font-size: 0.8em;">${data.latest_output}</pre></details>` : ''}
+                    `;
+                    startStatusPolling();
+                } else if (data.status === 'device_code' && !document.getElementById('authUrlBox').querySelector('strong')) {
+                    document.getElementById('authUrlBox').innerHTML = `
+                        <strong>Device Code Authentication:</strong><br><br>
+                        1. Open <a href="${data.verification_url || 'https://claude.ai/device'}" target="_blank" style="color: #667eea;">
+                            ${data.verification_url || 'https://claude.ai/device'}
+                        </a><br><br>
+                        2. Enter this code: <strong style="font-size: 1.2em; color: #667eea;">${data.device_code}</strong><br><br>
+                        ${data.latest_output ? `<details><summary>Latest Output</summary><pre style="font-size: 0.8em;">${data.latest_output}</pre></details>` : ''}
                     `;
                     startStatusPolling();
                 }
                 
-                if (data.authenticated) {
+                if (data.authenticated || data.status === 'authenticated') {
                     showAuthenticated();
                 }
             } catch (error) {
