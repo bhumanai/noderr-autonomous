@@ -13,6 +13,7 @@ app.use(express.static(path.join(__dirname, 'docs')));
 // In-memory storage
 let projects = [];
 let tasks = [];
+let brainstormSessions = [];
 
 // Projects endpoints
 app.get('/api/projects', (req, res) => {
@@ -147,13 +148,107 @@ app.post('/api/git/push', (req, res) => {
     });
 });
 
+// Brainstorming endpoints
+app.get('/api/brainstorm/sessions', (req, res) => {
+    const { projectId } = req.query;
+    const result = projectId ? 
+        brainstormSessions.filter(s => s.projectId === projectId) : 
+        brainstormSessions;
+    res.json(result);
+});
+
+app.post('/api/brainstorm/sessions', (req, res) => {
+    const session = {
+        id: `session-${Date.now()}`,
+        projectId: req.body.projectId,
+        title: req.body.title || 'New Brainstorm',
+        messages: req.body.messages || [],
+        context: req.body.context || {},
+        generatedTasks: req.body.generatedTasks || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    brainstormSessions.push(session);
+    res.status(201).json(session);
+});
+
+app.get('/api/brainstorm/sessions/:id', (req, res) => {
+    const session = brainstormSessions.find(s => s.id === req.params.id);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    res.json(session);
+});
+
+app.put('/api/brainstorm/sessions/:id', (req, res) => {
+    const session = brainstormSessions.find(s => s.id === req.params.id);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    
+    Object.assign(session, req.body, {
+        updatedAt: new Date().toISOString()
+    });
+    res.json(session);
+});
+
+app.delete('/api/brainstorm/sessions/:id', (req, res) => {
+    const index = brainstormSessions.findIndex(s => s.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Session not found' });
+    brainstormSessions.splice(index, 1);
+    res.status(204).send();
+});
+
+app.post('/api/brainstorm/analyze', (req, res) => {
+    // Simulate AI analysis
+    const { message, context } = req.body;
+    
+    // Simple keyword-based response generation
+    const lowerMessage = message.toLowerCase();
+    let response = {
+        message: '',
+        tasks: [],
+        insights: []
+    };
+    
+    if (lowerMessage.includes('feature') || lowerMessage.includes('add')) {
+        response.message = `Great idea! Let me analyze the requirements for this feature...`;
+        response.tasks = [
+            { description: 'Research similar implementations', complexity: 'low' },
+            { description: 'Design the architecture', complexity: 'medium' },
+            { description: 'Implement core functionality', complexity: 'high' },
+            { description: 'Add tests', complexity: 'medium' }
+        ];
+        response.insights = [
+            'Consider user experience implications',
+            'Check for existing patterns in codebase',
+            'Plan for scalability'
+        ];
+    } else if (lowerMessage.includes('bug') || lowerMessage.includes('fix')) {
+        response.message = `Let's systematically debug this issue...`;
+        response.tasks = [
+            { description: 'Reproduce the bug', complexity: 'low' },
+            { description: 'Identify root cause', complexity: 'medium' },
+            { description: 'Implement fix', complexity: 'medium' },
+            { description: 'Add regression test', complexity: 'low' }
+        ];
+        response.insights = [
+            'Check recent changes that might have caused this',
+            'Look for similar patterns elsewhere',
+            'Consider edge cases'
+        ];
+    } else {
+        response.message = `Interesting! Can you provide more details about what you want to achieve?`;
+        response.insights = ['Need more context to generate specific tasks'];
+    }
+    
+    res.json(response);
+});
+
 // Status endpoint
 app.get('/api/status', (req, res) => {
     res.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
         projects: projects.length,
-        tasks: tasks.length
+        tasks: tasks.length,
+        brainstormSessions: brainstormSessions.length
     });
 });
 

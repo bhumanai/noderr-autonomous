@@ -29,6 +29,10 @@
                 </select>
                 <button id="addProjectBtn" class="btn-icon" aria-label="Add Project">+</button>
             </div>
+            <div class="header-tabs">
+                <button class="tab-btn active" data-tab="kanban">📋 Tasks</button>
+                <button class="tab-btn" data-tab="brainstorm">🧠 Brainstorm</button>
+            </div>
             <div class="header-actions">
                 <span id="connectionStatus" class="status-indicator"></span>
                 <button id="settingsBtn" class="btn-icon" aria-label="Settings">⚙️</button>
@@ -38,6 +42,87 @@
 
     <!-- Main Content -->
     <main class="main-content">
+        <!-- Brainstorm View -->
+        <div id="brainstormView" class="view-container" style="display: none;">
+            <div class="brainstorm-container">
+                <div class="brainstorm-sidebar">
+                    <div class="brainstorm-sessions">
+                        <div class="sessions-header">
+                            <h3>Sessions</h3>
+                            <button id="newSessionBtn" class="btn-icon">+</button>
+                        </div>
+                        <div id="sessionsList" class="sessions-list">
+                            <!-- Sessions will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="brainstorm-context">
+                        <h3>Context Gathered</h3>
+                        <div id="contextPanel" class="context-panel">
+                            <div class="context-section">
+                                <h4>📁 Codebase Insights</h4>
+                                <ul id="codebaseInsights"></ul>
+                            </div>
+                            <div class="context-section">
+                                <h4>🔍 Research Findings</h4>
+                                <ul id="researchFindings"></ul>
+                            </div>
+                            <div class="context-section">
+                                <h4>⚠️ Considerations</h4>
+                                <ul id="considerations"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="brainstorm-main">
+                    <div class="brainstorm-chat">
+                        <div id="chatMessages" class="chat-messages">
+                            <div class="chat-message ai">
+                                <div class="message-content">
+                                    <strong>🧠 Brainstorm AI</strong>
+                                    <p>Hi! Let's brainstorm your idea. Tell me what you want to build, and I'll help you think through every detail, research the codebase, and generate comprehensive tasks.</p>
+                                    <p>I'll ask questions to understand your vision better and uncover edge cases you might not have considered.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <div class="chat-tools">
+                                <button class="tool-btn" data-tool="research" title="Research codebase">
+                                    🔍
+                                </button>
+                                <button class="tool-btn" data-tool="adversarial" title="Adversarial analysis">
+                                    ⚔️
+                                </button>
+                                <button class="tool-btn" data-tool="mindmap" title="View mind map">
+                                    🗺️
+                                </button>
+                            </div>
+                            <textarea 
+                                id="brainstormInput" 
+                                class="brainstorm-input" 
+                                placeholder="Describe your idea, feature, or problem to solve..."
+                                rows="3"
+                            ></textarea>
+                            <button id="sendBrainstormBtn" class="btn-primary">Send</button>
+                        </div>
+                    </div>
+                    <div class="brainstorm-tasks">
+                        <div class="tasks-header">
+                            <h3>Generated Tasks (<span id="taskGenCount">0</span>)</h3>
+                            <div class="task-actions">
+                                <button id="refineTasksBtn" class="btn-secondary">🔄 Refine</button>
+                                <button id="exportTasksBtn" class="btn-primary">📤 Export to Kanban</button>
+                            </div>
+                        </div>
+                        <div id="generatedTasks" class="generated-tasks">
+                            <!-- Generated tasks will appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kanban View -->
+        <div id="kanbanView" class="view-container">
         <!-- Mobile View -->
         <div class="mobile-view">
             <div class="task-status" id="currentTaskMobile">
@@ -112,6 +197,7 @@
                     <div class="task-container" id="pushedTasks"></div>
                 </div>
             </div>
+        </div>
         </div>
     </main>
 
@@ -265,5 +351,7 @@
     </div>
 
     <script src="app.js"></script>
+    <script src="brainstorm-engine.js"></script>
+    <script src="brainstorm.js"></script>
 </body>
 </html>

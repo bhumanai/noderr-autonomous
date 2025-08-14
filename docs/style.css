@@ -794,3 +794,325 @@ body {
         margin-bottom: var(--spacing-lg);
     }
 }
+/* Brainstorming Mode Styles */
+.header-tabs {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.tab-btn {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: var(--font-size-sm);
+}
+
+.tab-btn.active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+.view-container {
+    width: 100%;
+    height: 100%;
+}
+
+.brainstorm-container {
+    display: flex;
+    height: calc(100vh - var(--header-height));
+    background: var(--color-bg-secondary);
+}
+
+.brainstorm-sidebar {
+    width: 300px;
+    background: white;
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+}
+
+.brainstorm-sessions {
+    flex: 1;
+    border-bottom: 1px solid var(--color-border);
+    overflow-y: auto;
+}
+
+.sessions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.sessions-list {
+    padding: var(--spacing-sm);
+}
+
+.session-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius);
+    cursor: pointer;
+    margin-bottom: var(--spacing-xs);
+    transition: var(--transition);
+}
+
+.session-item:hover {
+    background: var(--color-bg-hover);
+}
+
+.session-item.active {
+    background: var(--color-accent);
+    color: white;
+}
+
+.brainstorm-context {
+    flex: 1;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+}
+
+.context-panel h4 {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.context-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.context-section ul {
+    list-style: none;
+    padding: 0;
+}
+
+.context-section li {
+    padding: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--color-text);
+    line-height: 1.5;
+}
+
+.brainstorm-main {
+    flex: 1;
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+}
+
+.brainstorm-chat {
+    flex: 1.5;
+    background: white;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+}
+
+.chat-messages {
+    flex: 1;
+    padding: var(--spacing-lg);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.chat-message {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.chat-message.user {
+    justify-content: flex-end;
+}
+
+.chat-message.ai {
+    justify-content: flex-start;
+}
+
+.message-content {
+    max-width: 70%;
+    padding: var(--spacing-md);
+    border-radius: var(--radius);
+    background: var(--color-bg-secondary);
+}
+
+.chat-message.user .message-content {
+    background: var(--color-accent);
+    color: white;
+}
+
+.chat-message.ai .message-content {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+}
+
+.message-content strong {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+}
+
+.chat-input-container {
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+}
+
+.chat-tools {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.tool-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    background: white;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1.2rem;
+}
+
+.tool-btn:hover {
+    background: var(--color-bg-hover);
+    transform: scale(1.05);
+}
+
+.tool-btn.active {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.brainstorm-input {
+    width: 100%;
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    resize: vertical;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-sm);
+}
+
+.brainstorm-tasks {
+    flex: 1;
+    background: white;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+}
+
+.tasks-header {
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.generated-tasks {
+    flex: 1;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+}
+
+.generated-task {
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    margin-bottom: var(--spacing-sm);
+    transition: var(--transition);
+}
+
+.generated-task:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+.task-complexity {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    margin-left: var(--spacing-sm);
+}
+
+.complexity-low {
+    background: #D1FAE5;
+    color: var(--color-success);
+}
+
+.complexity-medium {
+    background: #FED7AA;
+    color: var(--color-warning);
+}
+
+.complexity-high {
+    background: #FEE2E2;
+    color: var(--color-error);
+}
+
+.task-dependencies {
+    margin-top: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.research-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #F3F4F6;
+    border-radius: 4px;
+    font-size: var(--font-size-xs);
+    margin-top: var(--spacing-sm);
+}
+
+.thinking-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+    background-size: 200% 100%;
+    animation: thinking 2s linear infinite;
+    border-radius: var(--radius);
+}
+
+@keyframes thinking {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .brainstorm-container {
+        flex-direction: column;
+    }
+    
+    .brainstorm-sidebar {
+        width: 100%;
+        height: 200px;
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+    }
+    
+    .brainstorm-main {
+        flex-direction: column;
+    }
+}
