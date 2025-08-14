@@ -207,6 +207,43 @@ def verify_auth():
     if request.method == 'OPTIONS':
         return '', 204
     
+    # First check if Claude tmux session is running
+    try:
+        # Check for running tmux session
+        tmux_check = subprocess.run(
+            ['sudo', '-u', 'claude-user', 'tmux', 'has-session', '-t', 'claude-code'],
+            capture_output=True,
+            timeout=5
+        )
+        
+        if tmux_check.returncode == 0:
+            # Session exists, check if Claude is responsive
+            try:
+                # Capture current state
+                capture_result = subprocess.run(
+                    ['sudo', '-u', 'claude-user', 'tmux', 'capture-pane', '-t', 'claude-code', '-p'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                
+                output = capture_result.stdout.lower()
+                
+                # Check if Claude is at a ready prompt
+                if 'bypass permissions on' in output and '>' in output:
+                    # Claude is running and ready
+                    return jsonify({
+                        'authenticated': True,
+                        'user': 'claude-user',
+                        'method': 'tmux_session_active',
+                        'output': 'Claude CLI is running in tmux session'
+                    })
+            except:
+                pass
+    except:
+        pass
+    
+    # Fallback to checking auth status directly
     try:
         # Check Claude auth status as claude-user
         result = subprocess.run(
@@ -232,6 +269,7 @@ def verify_auth():
         return jsonify({
             'authenticated': authenticated,
             'user': user_info,
+            'method': 'auth_status_check',
             'output': result.stdout
         })
         
