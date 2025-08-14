@@ -1,8 +1,8 @@
-// Real AI Brainstorming with OpenAI GPT-4
+// Real AI Brainstorming with OpenAI GPT-5
 // IMPORTANT: Set OPENAI_API_KEY environment variable in your deployment platform
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-async function callOpenAI(messages, model = 'gpt-4-turbo-preview') {
+async function callOpenAI(messages, model = 'gpt-5-2025-08-07') {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {

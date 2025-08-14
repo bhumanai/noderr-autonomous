@@ -2,10 +2,10 @@
 
 ## What's New
 
-Your Noderr system now has **REAL AI intelligence** using OpenAI GPT-4 instead of hardcoded responses!
+Your Noderr system now has **REAL AI intelligence** using OpenAI GPT-5 instead of hardcoded responses!
 
 ### Key Improvements:
-- **Intelligent Task Generation**: GPT-4 analyzes your request and generates specific, actionable tasks
+- **Intelligent Task Generation**: GPT-5 analyzes your request and generates specific, actionable tasks
 - **Proper Task Sizing**: Each task is 2-4 hours (no more "Make UI" vagueness)
 - **Approval Workflow**: Review and approve tasks before they go to Kanban
 - **Smart Dependencies**: Tasks ordered by dependencies, no circular refs
@@ -109,7 +109,7 @@ export OPENAI_API_KEY="sk-your-api-key-here"
 
 ## 💰 Cost Estimation
 
-### OpenAI API Pricing (GPT-4):
+### OpenAI API Pricing (GPT-5):
 - **Input**: $0.03 per 1K tokens (~750 words)
 - **Output**: $0.06 per 1K tokens
 
@@ -129,14 +129,13 @@ export OPENAI_API_KEY="sk-your-api-key-here"
 
 ### Change AI Model (in `api/brainstorm-ai.js`):
 ```javascript
-// For cheaper, faster responses:
-model = 'gpt-3.5-turbo'  // 10x cheaper
+// For best quality (latest):
+model = 'gpt-5-2025-08-07'  // Latest GPT-5 model (Default)
 
-// For best quality:
-model = 'gpt-4-turbo-preview'  // Default
-
-// For latest:
-model = 'gpt-4'  // Most expensive
+// For previous versions:
+model = 'gpt-4-turbo-preview'  // GPT-4 Turbo
+model = 'gpt-4'  // GPT-4
+model = 'gpt-3.5-turbo'  // GPT-3.5 (cheapest)
 ```
 
 ### Adjust Task Size:
@@ -242,4 +241,4 @@ BAD: "Add payments"
 
 ---
 
-Your brainstorming is now **actually intelligent**! No more hardcoded responses - real AI understanding and task generation. 🎉
+Your brainstorming is now **actually intelligent** with GPT-5! No more hardcoded responses - real AI understanding and task generation with the latest model. 🎉
