@@ -2,6 +2,20 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs').promises;
+const { execSync, spawn } = require('child_process');
+const os = require('os');
+
+// Try to load AI module
+let analyzeWithAI;
+try {
+    const aiModule = require('./api/brainstorm-ai');
+    analyzeWithAI = aiModule.analyzeWithAI;
+    console.log('AI module loaded successfully');
+} catch (error) {
+    console.log('AI module not available, will use fallback');
+}
+
 const app = express();
 
 app.use(cors());
@@ -20,14 +34,41 @@ app.get('/api/projects', (req, res) => {
     res.json(projects);
 });
 
-app.post('/api/projects', (req, res) => {
+app.post('/api/projects', async (req, res) => {
     const project = {
         id: `project-${Date.now()}`,
         name: req.body.name || 'Unnamed Project',
         repo: req.body.repo || '',
         branch: req.body.branch || 'main',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        localPath: null,
+        lastSync: null
     };
+    
+    // Clone the repository if URL provided
+    if (project.repo) {
+        try {
+            const reposDir = path.join(os.tmpdir(), 'noderr-repos');
+            await fs.mkdir(reposDir, { recursive: true });
+            
+            project.localPath = path.join(reposDir, project.id);
+            
+            console.log(`Cloning repository ${project.repo} to ${project.localPath}`);
+            
+            // Clone the repository
+            execSync(`git clone --branch ${project.branch} --depth 1 "${project.repo}" "${project.localPath}"`, {
+                stdio: 'inherit'
+            });
+            
+            project.lastSync = new Date().toISOString();
+            console.log(`Successfully cloned repository to ${project.localPath}`);
+        } catch (error) {
+            console.error('Failed to clone repository:', error.message);
+            // Still create the project but note the error
+            project.cloneError = error.message;
+        }
+    }
+    
     projects.push(project);
     res.status(201).json(project);
 });
@@ -45,11 +86,139 @@ app.put('/api/projects/:id', (req, res) => {
     res.json(project);
 });
 
-app.delete('/api/projects/:id', (req, res) => {
+app.delete('/api/projects/:id', async (req, res) => {
     const index = projects.findIndex(p => p.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'Project not found' });
+    
+    // Clean up cloned repository if it exists
+    const project = projects[index];
+    if (project.localPath) {
+        try {
+            await fs.rm(project.localPath, { recursive: true, force: true });
+            console.log(`Cleaned up repository at ${project.localPath}`);
+        } catch (error) {
+            console.error('Failed to clean up repository:', error.message);
+        }
+    }
+    
     projects.splice(index, 1);
     res.status(204).send();
+});
+
+// Sync (git pull) a project repository
+app.post('/api/projects/:id/sync', async (req, res) => {
+    const project = projects.find(p => p.id === req.params.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    
+    if (!project.localPath) {
+        return res.status(400).json({ error: 'Project has no local repository' });
+    }
+    
+    try {
+        console.log(`Syncing repository at ${project.localPath}`);
+        execSync(`cd "${project.localPath}" && git pull origin ${project.branch}`, {
+            stdio: 'inherit'
+        });
+        project.lastSync = new Date().toISOString();
+        res.json({ message: 'Repository synced successfully', lastSync: project.lastSync });
+    } catch (error) {
+        console.error('Failed to sync repository:', error.message);
+        res.status(500).json({ error: 'Failed to sync repository', details: error.message });
+    }
+});
+
+// List files in a project directory
+app.get('/api/projects/:id/files', async (req, res) => {
+    const project = projects.find(p => p.id === req.params.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    
+    if (!project.localPath) {
+        return res.status(400).json({ error: 'Project has no local repository' });
+    }
+    
+    const { path: subPath = '' } = req.query;
+    const fullPath = path.join(project.localPath, subPath);
+    
+    try {
+        // Security: ensure we're still within the project directory
+        if (!fullPath.startsWith(project.localPath)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        
+        const stats = await fs.stat(fullPath);
+        
+        if (stats.isDirectory()) {
+            const items = await fs.readdir(fullPath, { withFileTypes: true });
+            const files = items
+                .filter(item => !item.name.startsWith('.git'))
+                .map(item => ({
+                    name: item.name,
+                    type: item.isDirectory() ? 'directory' : 'file',
+                    path: path.join(subPath, item.name)
+                }));
+            res.json(files);
+        } else {
+            // It's a file, return its content
+            const content = await fs.readFile(fullPath, 'utf-8');
+            res.json({ 
+                path: subPath, 
+                content,
+                size: stats.size,
+                modified: stats.mtime
+            });
+        }
+    } catch (error) {
+        console.error('Failed to read files:', error.message);
+        res.status(500).json({ error: 'Failed to read files', details: error.message });
+    }
+});
+
+// Get project file tree for context
+app.get('/api/projects/:id/tree', async (req, res) => {
+    const project = projects.find(p => p.id === req.params.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    
+    if (!project.localPath) {
+        return res.status(400).json({ error: 'Project has no local repository' });
+    }
+    
+    try {
+        // Get a simple file tree (excluding .git and node_modules)
+        const getTree = async (dir, basePath = '') => {
+            const items = await fs.readdir(dir, { withFileTypes: true });
+            const tree = [];
+            
+            for (const item of items) {
+                if (item.name.startsWith('.git') || item.name === 'node_modules') continue;
+                
+                const itemPath = path.join(basePath, item.name);
+                
+                if (item.isDirectory()) {
+                    const children = await getTree(path.join(dir, item.name), itemPath);
+                    tree.push({
+                        name: item.name,
+                        type: 'directory',
+                        path: itemPath,
+                        children
+                    });
+                } else {
+                    tree.push({
+                        name: item.name,
+                        type: 'file',
+                        path: itemPath
+                    });
+                }
+            }
+            
+            return tree;
+        };
+        
+        const tree = await getTree(project.localPath);
+        res.json({ projectId: project.id, tree });
+    } catch (error) {
+        console.error('Failed to get file tree:', error.message);
+        res.status(500).json({ error: 'Failed to get file tree', details: error.message });
+    }
 });
 
 // Tasks endpoints
@@ -195,47 +364,146 @@ app.delete('/api/brainstorm/sessions/:id', (req, res) => {
     res.status(204).send();
 });
 
-app.post('/api/brainstorm/analyze', (req, res) => {
-    // Simulate AI analysis
+app.post('/api/brainstorm/analyze', async (req, res) => {
     const { message, context } = req.body;
+    const { projectId } = context || {};
     
-    // Simple keyword-based response generation
+    // Enhance context with actual project files if available
+    let enhancedContext = { ...context };
+    
+    if (projectId) {
+        const project = projects.find(p => p.id === projectId);
+        if (project && project.localPath) {
+            try {
+                // Get file tree for context
+                const getSimpleTree = async (dir, basePath = '', depth = 2) => {
+                    if (depth <= 0) return [];
+                    const items = await fs.readdir(dir, { withFileTypes: true });
+                    const tree = [];
+                    
+                    for (const item of items) {
+                        if (item.name.startsWith('.git') || item.name === 'node_modules') continue;
+                        
+                        const itemPath = path.join(basePath, item.name);
+                        
+                        if (item.isDirectory() && depth > 1) {
+                            tree.push(`${itemPath}/`);
+                        } else if (item.isFile()) {
+                            tree.push(itemPath);
+                        }
+                    }
+                    
+                    return tree;
+                };
+                
+                const fileTree = await getSimpleTree(project.localPath);
+                enhancedContext.projectStructure = fileTree.slice(0, 30).join('\n');
+                
+                // Try to read package.json for tech stack info
+                try {
+                    const pkgPath = path.join(project.localPath, 'package.json');
+                    const pkgContent = await fs.readFile(pkgPath, 'utf-8');
+                    const pkg = JSON.parse(pkgContent);
+                    const deps = Object.keys(pkg.dependencies || {}).slice(0, 10);
+                    enhancedContext.techStack = `Node.js with: ${deps.join(', ')}`;
+                    enhancedContext.projectType = pkg.description || 'Node.js application';
+                } catch (e) {
+                    // No package.json or error reading it
+                }
+                
+                console.log('Enhanced context with project files');
+            } catch (error) {
+                console.error('Failed to enhance context:', error.message);
+            }
+        }
+    }
+    
+    // Try to use the AI module if available
+    if (analyzeWithAI) {
+        try {
+            const result = await analyzeWithAI(message, enhancedContext);
+            res.json(result);
+            return;
+        } catch (error) {
+            console.error('AI analysis failed:', error.message);
+        }
+    }
+    
+    // Fallback to simple keyword-based response
     const lowerMessage = message.toLowerCase();
     let response = {
-        message: '',
+        analysis: 'Let me analyze your request...',
         tasks: [],
-        insights: []
+        clarifyingQuestions: [],
+        assumptions: [],
+        risks: []
     };
     
     if (lowerMessage.includes('feature') || lowerMessage.includes('add')) {
-        response.message = `Great idea! Let me analyze the requirements for this feature...`;
+        response.analysis = 'I\'ll help you plan this new feature.';
         response.tasks = [
-            { description: 'Research similar implementations', complexity: 'low' },
-            { description: 'Design the architecture', complexity: 'medium' },
-            { description: 'Implement core functionality', complexity: 'high' },
-            { description: 'Add tests', complexity: 'medium' }
+            {
+                id: `task-${Date.now()}-1`,
+                title: 'Research similar implementations',
+                description: 'Look at how similar features are implemented',
+                estimatedHours: 2,
+                complexity: 'low',
+                dependencies: [],
+                status: 'suggested'
+            },
+            {
+                id: `task-${Date.now()}-2`,
+                title: 'Design the architecture',
+                description: 'Create a detailed design',
+                estimatedHours: 3,
+                complexity: 'medium',
+                dependencies: [0],
+                status: 'suggested'
+            }
         ];
-        response.insights = [
-            'Consider user experience implications',
-            'Check for existing patterns in codebase',
-            'Plan for scalability'
+        response.clarifyingQuestions = [
+            'What is the expected scale of this feature?',
+            'Are there any specific requirements?'
         ];
     } else if (lowerMessage.includes('bug') || lowerMessage.includes('fix')) {
-        response.message = `Let's systematically debug this issue...`;
+        response.analysis = 'Let\'s systematically debug this issue.';
         response.tasks = [
-            { description: 'Reproduce the bug', complexity: 'low' },
-            { description: 'Identify root cause', complexity: 'medium' },
-            { description: 'Implement fix', complexity: 'medium' },
-            { description: 'Add regression test', complexity: 'low' }
+            {
+                id: `task-${Date.now()}-1`,
+                title: 'Reproduce the bug',
+                description: 'Create a reliable reproduction case',
+                estimatedHours: 2,
+                complexity: 'low',
+                dependencies: [],
+                status: 'suggested'
+            },
+            {
+                id: `task-${Date.now()}-2`,
+                title: 'Identify root cause',
+                description: 'Debug and find the source of the issue',
+                estimatedHours: 3,
+                complexity: 'medium',
+                dependencies: [0],
+                status: 'suggested'
+            }
         ];
-        response.insights = [
-            'Check recent changes that might have caused this',
-            'Look for similar patterns elsewhere',
-            'Consider edge cases'
+        response.clarifyingQuestions = [
+            'When did this issue start occurring?',
+            'Can you reproduce it consistently?'
         ];
     } else {
-        response.message = `Interesting! Can you provide more details about what you want to achieve?`;
-        response.insights = ['Need more context to generate specific tasks'];
+        response.analysis = 'Let me break this down into manageable tasks.';
+        response.tasks = [
+            {
+                id: `task-${Date.now()}-1`,
+                title: 'Define requirements',
+                description: 'Clarify what needs to be done',
+                estimatedHours: 2,
+                complexity: 'low',
+                dependencies: [],
+                status: 'suggested'
+            }
+        ];
     }
     
     res.json(response);
