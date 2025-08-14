@@ -380,7 +380,8 @@ app.post('/api/brainstorm/analyze', async (req, res) => {
                 console.log(`Starting Claude CLI brainstorm session for project ${projectId}`);
                 
                 // Execute the brainstorm script
-                execSync(`./brainstorm-with-claude.sh "${projectId}" "${project.localPath}" "${message}" "${sessionId}"`, {
+                const scriptPath = path.join(__dirname, 'brainstorm-with-claude.sh');
+                execSync(`"${scriptPath}" "${projectId}" "${project.localPath}" "${message}" "${sessionId}"`, {
                     cwd: __dirname
                 });
                 
