@@ -12,6 +12,7 @@ const AppState = {
     tasks: [],
     projects: [],
     eventSource: null,
+    backendOnline: false,
     settings: {
         autoCommit: true,
         autoPush: true,
@@ -26,12 +27,7 @@ const elements = {};
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
     initializeElements();
-    loadSettings();
-    loadProjects();
-    setupEventListeners();
-    setupRealtimeUpdates();
-    checkMobileView();
-    requestNotificationPermission();
+    checkBackendConnection();
 });
 
 // Initialize DOM element references
@@ -71,8 +67,61 @@ function initializeElements() {
     };
 }
 
+// Check backend connection and fail if offline
+async function checkBackendConnection() {
+    try {
+        const response = await fetch(`${API_BASE}/health`, {
+            method: 'GET',
+            mode: 'cors',
+            timeout: 5000
+        });
+        
+        if (!response.ok) {
+            throw new Error('Backend is not responding correctly');
+        }
+        
+        AppState.backendOnline = true;
+        updateConnectionStatus('connected');
+        
+        // Only proceed with initialization if backend is online
+        loadSettings();
+        loadProjects();
+        setupEventListeners();
+        setupRealtimeUpdates();
+        checkMobileView();
+        requestNotificationPermission();
+        
+    } catch (error) {
+        console.error('FATAL: Backend is offline or unreachable:', error);
+        AppState.backendOnline = false;
+        updateConnectionStatus('disconnected');
+        
+        // Display fatal error and disable all functionality
+        showFatalError();
+    }
+}
+
+// Show fatal error when backend is offline
+function showFatalError() {
+    document.body.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #1a1a1a; color: #ff4444; font-family: monospace;">
+            <div style="text-align: center; padding: 2rem;">
+                <h1 style="font-size: 3rem; margin-bottom: 1rem;">⚠️ BACKEND OFFLINE</h1>
+                <p style="font-size: 1.5rem; margin-bottom: 2rem;">The Noderr backend service is not available.</p>
+                <p style="font-size: 1rem; color: #888;">This application requires an active backend connection to function.</p>
+                <p style="font-size: 1rem; color: #888; margin-top: 1rem;">Expected backend: ${API_BASE}</p>
+                <button onclick="window.location.reload()" style="margin-top: 2rem; padding: 0.5rem 1rem; background: #ff4444; color: white; border: none; cursor: pointer; font-size: 1rem;">
+                    Retry Connection
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 // Setup Event Listeners
 function setupEventListeners() {
+    if (!AppState.backendOnline) return;
+    
     // Project management
     elements.projectSelect.addEventListener('change', handleProjectChange);
     elements.addProjectBtn.addEventListener('click', () => showModal('addProjectModal'));
@@ -125,6 +174,11 @@ function setupEventListeners() {
 
 // Project Management
 async function loadProjects() {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - cannot load projects', 'error');
+        return;
+    }
+    
     try {
         const response = await fetch(`${API_BASE}/projects`);
         if (!response.ok) throw new Error('Failed to load projects');
@@ -143,7 +197,8 @@ async function loadProjects() {
         }
     } catch (error) {
         console.error('Error loading projects:', error);
-        showToast('Failed to load projects', 'error');
+        showToast('Backend connection failed - application cannot function', 'error');
+        showFatalError();
     }
 }
 
@@ -158,6 +213,11 @@ function updateProjectDropdown() {
 }
 
 async function handleProjectChange() {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - cannot change projects', 'error');
+        return;
+    }
+    
     const projectId = elements.projectSelect.value;
     if (!projectId) {
         AppState.currentProject = null;
@@ -174,6 +234,11 @@ async function handleProjectChange() {
 }
 
 async function saveProject() {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - cannot add projects', 'error');
+        return;
+    }
+    
     const repo = document.getElementById('projectRepo').value.trim();
     const branch = document.getElementById('projectBranch').value.trim() || 'main';
     const name = document.getElementById('projectName').value.trim();
@@ -209,12 +274,17 @@ async function saveProject() {
         document.getElementById('projectName').value = '';
     } catch (error) {
         console.error('Error adding project:', error);
-        showToast('Failed to add project', 'error');
+        showToast('Backend connection failed - cannot add project', 'error');
     }
 }
 
 // Task Management
 async function loadTasks() {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - cannot load tasks', 'error');
+        return;
+    }
+    
     if (!AppState.currentProject) return;
     
     try {
@@ -225,8 +295,13 @@ async function loadTasks() {
         renderTasks();
     } catch (error) {
         console.error('Error loading tasks:', error);
-        showToast('Failed to load tasks', 'error');
+        showToast('Backend connection failed - cannot load tasks', 'error');
     }
+}
+
+function clearTasks() {
+    AppState.tasks = [];
+    renderTasks();
 }
 
 function renderTasks() {
@@ -367,6 +442,11 @@ function createMobileTaskCard(task) {
 }
 
 async function saveTask() {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - cannot create tasks', 'error');
+        return;
+    }
+    
     const description = document.getElementById('taskDescription').value.trim();
     if (!description) {
         showToast('Task description is required', 'error');
@@ -408,11 +488,13 @@ async function saveTask() {
         }
     } catch (error) {
         console.error('Error creating task:', error);
-        showToast('Failed to create task', 'error');
+        showToast('Backend connection failed - cannot create task', 'error');
     }
 }
 
 async function moveTaskToReady(taskId) {
+    if (!AppState.backendOnline) return;
+    
     try {
         const response = await fetch(`${API_BASE}/tasks/${taskId}`, {
             method: 'PATCH',
@@ -448,6 +530,11 @@ function applyTaskTemplate(template) {
 
 // Review functionality
 window.reviewTask = function(taskId) {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - cannot review tasks', 'error');
+        return;
+    }
+    
     const task = AppState.tasks.find(t => t.id === taskId);
     if (!task) return;
     
@@ -465,6 +552,8 @@ window.reviewTask = function(taskId) {
 };
 
 async function loadTaskChanges(taskId) {
+    if (!AppState.backendOnline) return;
+    
     try {
         const response = await fetch(`${API_BASE}/tasks/${taskId}/changes`);
         if (!response.ok) throw new Error('Failed to load changes');
@@ -478,6 +567,11 @@ async function loadTaskChanges(taskId) {
 }
 
 async function approveTask() {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - cannot approve tasks', 'error');
+        return;
+    }
+    
     const taskId = elements.reviewTaskModal.dataset.taskId;
     const commitMessage = document.getElementById('commitMessage').value;
     
@@ -511,11 +605,16 @@ async function approveTask() {
     } catch (error) {
         console.error('Error approving task:', error);
         hideLoading();
-        showToast('Failed to approve task', 'error');
+        showToast('Backend connection failed - cannot approve task', 'error');
     }
 }
 
 async function reviseTask() {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - cannot revise tasks', 'error');
+        return;
+    }
+    
     const taskId = elements.reviewTaskModal.dataset.taskId;
     if (!taskId) return;
     
@@ -538,12 +637,14 @@ async function reviseTask() {
         showToast('Task sent back for revision', 'info');
     } catch (error) {
         console.error('Error revising task:', error);
-        showToast('Failed to revise task', 'error');
+        showToast('Backend connection failed - cannot revise task', 'error');
     }
 }
 
 // Real-time Updates
 function setupRealtimeUpdates() {
+    if (!AppState.backendOnline) return;
+    
     if (AppState.eventSource) {
         AppState.eventSource.close();
     }
@@ -556,7 +657,11 @@ function setupRealtimeUpdates() {
     
     AppState.eventSource.onerror = () => {
         updateConnectionStatus('disconnected');
-        setTimeout(setupRealtimeUpdates, 5000); // Retry after 5 seconds
+        AppState.backendOnline = false;
+        showToast('Lost connection to backend - application will not function', 'error');
+        setTimeout(() => {
+            window.location.reload(); // Try to reconnect by reloading
+        }, 3000);
     };
     
     AppState.eventSource.addEventListener('task:created', (e) => {
@@ -628,6 +733,10 @@ function saveSettings() {
 
 // Utility Functions
 function showModal(modalId) {
+    if (!AppState.backendOnline) {
+        showToast('Backend is offline - feature unavailable', 'error');
+        return;
+    }
     document.getElementById(modalId).classList.add('modal-open');
     document.body.style.overflow = 'hidden';
 }
@@ -725,8 +834,8 @@ window.addEventListener('resize', checkMobileView);
 
 // Handle visibility change for reconnection
 document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && AppState.eventSource?.readyState === EventSource.CLOSED) {
-        setupRealtimeUpdates();
+    if (!document.hidden && !AppState.backendOnline) {
+        window.location.reload(); // Try to reconnect
     }
 });
 
