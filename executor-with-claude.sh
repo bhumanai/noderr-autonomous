@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude CLI Executor for Noderr Tasks
-# This script starts a Claude CLI session to execute a specific task
+# REAL implementation - Claude actually executes the task
 
 TASK_ID=$1
 PROJECT_ID=$2
@@ -25,11 +25,16 @@ fi
 OUTPUT_DIR="/tmp/noderr-executors/${SESSION_ID}"
 mkdir -p "$OUTPUT_DIR"
 
-echo "Starting Claude executor session..."
+echo "Starting REAL Claude executor session..."
 echo "  Task: ${TASK_ID}"
 echo "  Project: ${PROJECT_ID}"
 echo "  Path: ${PROJECT_PATH}"
 echo "  Session: ${SESSION_ID}"
+
+# Update task status to 'working'
+curl -s -X PATCH "http://localhost:3000/api/tasks/${TASK_ID}" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "working", "progress": 10}' > /dev/null
 
 # Log the session
 cat > "${OUTPUT_DIR}/session.json" << EOF
@@ -37,71 +42,112 @@ cat > "${OUTPUT_DIR}/session.json" << EOF
   "sessionId": "${SESSION_ID}",
   "taskId": "${TASK_ID}",
   "projectId": "${PROJECT_ID}",
-  "projectPath": "${PROJECT_PATH}",
+  "projectPath": "${PROJECT_PATH}",  
   "taskDescription": "${TASK_DESCRIPTION}",
   "startTime": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "status": "running"
 }
 EOF
 
-# Create execution script
-cat > "${OUTPUT_DIR}/execute_task.sh" << 'SCRIPT'
-#!/bin/bash
-TASK_ID="$1"
-TASK_DESC="$2"
-OUTPUT_DIR="$3"
-
-# Update task status to 'working'
-curl -s -X PATCH "http://localhost:3000/api/tasks/${TASK_ID}" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "working", "progress": 10}'
-
-# Simulate task execution (in real implementation, Claude would do the work)
-echo "Executing task: ${TASK_DESC}"
-echo "Working in: $(pwd)"
-sleep 2
-
-# Update progress
-curl -s -X PATCH "http://localhost:3000/api/tasks/${TASK_ID}" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "working", "progress": 50}'
-
-# Create completion report
-cat > "${OUTPUT_DIR}/completion.json" << JSON
-{
-  "taskId": "${TASK_ID}",
-  "status": "completed",
-  "filesModified": [],
-  "completedAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-}
-JSON
-
-# Update task to review
-curl -s -X PATCH "http://localhost:3000/api/tasks/${TASK_ID}" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "review", "progress": 100}'
-
-echo "Task completed!"
-SCRIPT
-
-chmod +x "${OUTPUT_DIR}/execute_task.sh"
-
-# Start tmux session
+# Start tmux session with Claude in project directory
 tmux new-session -d -s "$SESSION_ID" -c "$PROJECT_PATH"
 
-# Send initial commands
-tmux send-keys -t "$SESSION_ID" "# Claude Executor Session" Enter
-tmux send-keys -t "$SESSION_ID" "# Task: ${TASK_DESCRIPTION}" Enter
+# Give Claude the ACTUAL task to implement
+CLAUDE_PROMPT="You are in the project directory: ${PROJECT_PATH}
+
+TASK TO IMPLEMENT: ${TASK_DESCRIPTION}
+
+Please:
+1. First explore the codebase to understand the structure
+2. Implement the task as described
+3. Make actual code changes needed
+4. Test your changes if possible
+5. When done, create a file at: ${OUTPUT_DIR}/completed.txt with summary
+
+Use commands like:
+- ls, find, grep to explore
+- cat, less to read files
+- vi, nano, or echo to edit files
+- git diff to see your changes
+
+Start by exploring the project structure."
+
+# Send the task to Claude (REAL execution, not simulation)
+tmux send-keys -t "$SESSION_ID" "# Claude Executor - REAL Implementation" Enter
 tmux send-keys -t "$SESSION_ID" "cd ${PROJECT_PATH}" Enter
 tmux send-keys -t "$SESSION_ID" "" Enter
 
-# Execute the task (simplified for now)
-tmux send-keys -t "$SESSION_ID" "bash ${OUTPUT_DIR}/execute_task.sh '${TASK_ID}' '${TASK_DESCRIPTION}' '${OUTPUT_DIR}'" Enter
+# Start Claude with the task
+tmux send-keys -t "$SESSION_ID" "claude" Enter
+sleep 1
+
+# Send the prompt to Claude
+echo "$CLAUDE_PROMPT" | while IFS= read -r line; do
+    # Escape any quotes in the line
+    escaped_line=$(echo "$line" | sed "s/'/'\\\\''/g")
+    tmux send-keys -t "$SESSION_ID" "$escaped_line" Enter
+done
+
+# Create a monitor script that updates task progress
+cat > "${OUTPUT_DIR}/monitor.sh" << 'MONITOR'
+#!/bin/bash
+TASK_ID="$1"
+OUTPUT_DIR="$2"
+SESSION_ID="$3"
+
+# Monitor for 5 minutes max
+TIMEOUT=300
+ELAPSED=0
+
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    # Check if completed file exists
+    if [ -f "${OUTPUT_DIR}/completed.txt" ]; then
+        # Task completed - update status
+        curl -s -X PATCH "http://localhost:3000/api/tasks/${TASK_ID}" \
+          -H "Content-Type: application/json" \
+          -d '{"status": "review", "progress": 100}' > /dev/null
+        
+        echo "Task completed by Claude!"
+        break
+    fi
+    
+    # Update progress periodically
+    if [ $((ELAPSED % 30)) -eq 0 ] && [ $ELAPSED -gt 0 ]; then
+        PROGRESS=$((10 + (ELAPSED * 80 / TIMEOUT)))
+        curl -s -X PATCH "http://localhost:3000/api/tasks/${TASK_ID}" \
+          -H "Content-Type: application/json" \
+          -d "{\"status\": \"working\", \"progress\": $PROGRESS}" > /dev/null
+    fi
+    
+    # Check if session still exists
+    if ! tmux has-session -t "$SESSION_ID" 2>/dev/null; then
+        echo "Session ended"
+        break
+    fi
+    
+    sleep 5
+    ELAPSED=$((ELAPSED + 5))
+done
+
+# Final status update
+if [ ! -f "${OUTPUT_DIR}/completed.txt" ]; then
+    curl -s -X PATCH "http://localhost:3000/api/tasks/${TASK_ID}" \
+      -H "Content-Type: application/json" \
+      -d '{"status": "review", "progress": 90}' > /dev/null
+fi
+MONITOR
+
+chmod +x "${OUTPUT_DIR}/monitor.sh"
+
+# Start monitor in background
+"${OUTPUT_DIR}/monitor.sh" "$TASK_ID" "$OUTPUT_DIR" "$SESSION_ID" > "${OUTPUT_DIR}/monitor.log" 2>&1 &
+MONITOR_PID=$!
 
 echo ""
-echo "✅ Executor session started: ${SESSION_ID}"
+echo "✅ REAL Claude executor session started: ${SESSION_ID}"
 echo "📁 Output directory: ${OUTPUT_DIR}"
-echo "👀 Monitor with: tmux attach -t ${SESSION_ID}"
+echo "📊 Monitor PID: ${MONITOR_PID}"
+echo "👀 Watch Claude work: tmux attach -t ${SESSION_ID}"
 echo ""
 
 # Return session info
@@ -109,7 +155,9 @@ cat << JSON
 {
   "sessionId": "${SESSION_ID}",
   "taskId": "${TASK_ID}",
-  "status": "started",
-  "monitorCommand": "tmux attach -t ${SESSION_ID}"
+  "status": "running",
+  "monitorPid": ${MONITOR_PID},
+  "outputDir": "${OUTPUT_DIR}",
+  "attachCommand": "tmux attach -t ${SESSION_ID}"
 }
 JSON

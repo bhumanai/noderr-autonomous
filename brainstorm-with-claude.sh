@@ -1,6 +1,6 @@
 #!/bin/bash
-# Brainstorm with Claude Code CLI in project directory
-# This script starts a Claude CLI session in the project directory to analyze code and generate tasks
+# REAL Claude CLI Brainstorming - Claude ACTUALLY analyzes the code
+# No simulations, no hardcoded tasks - REAL implementation
 
 PROJECT_ID=$1
 PROJECT_PATH=$2
@@ -17,16 +17,17 @@ if [ -z "$SESSION_ID" ]; then
     SESSION_ID="brainstorm-${PROJECT_ID}-$(date +%s)"
 fi
 
-# Create output directory for brainstorm results
+# Create output directory
 OUTPUT_DIR="/tmp/noderr-brainstorms/${SESSION_ID}"
 mkdir -p "$OUTPUT_DIR"
 
-echo "Setting up Claude brainstorm session..."
+echo "Starting REAL Claude brainstorm session..."
 echo "  Project: ${PROJECT_ID}"
 echo "  Path: ${PROJECT_PATH}"
+echo "  Request: ${USER_REQUEST}"
 echo "  Session: ${SESSION_ID}"
 
-# Log the session start
+# Log the session
 cat > "${OUTPUT_DIR}/session.json" << EOF
 {
   "sessionId": "${SESSION_ID}",
@@ -39,97 +40,136 @@ cat > "${OUTPUT_DIR}/session.json" << EOF
 }
 EOF
 
-# Create a script for Claude to execute
-cat > "${OUTPUT_DIR}/brainstorm_task.sh" << 'SCRIPT'
-#!/bin/bash
-OUTPUT_FILE="$1"
-PROJECT_PATH="$2"
-USER_REQUEST="$3"
-
-cd "$PROJECT_PATH"
-
-# Create the tasks.json file with Claude's analysis
-cat > "$OUTPUT_FILE" << 'JSON'
-{
-  "analysis": "Analyzing the codebase to break down the request into actionable tasks",
-  "tasks": [
-    {
-      "id": "task-1",
-      "title": "Analyze existing codebase structure",
-      "description": "Review the project structure, identify key components and patterns",
-      "estimatedHours": 2,
-      "complexity": "low",
-      "dependencies": [],
-      "technicalDetails": "Use find, grep, and file reading to understand the codebase",
-      "files": ["README.md", "package.json", "src/"]
-    },
-    {
-      "id": "task-2",
-      "title": "Design implementation approach",
-      "description": "Based on the request and codebase analysis, design the implementation",
-      "estimatedHours": 3,
-      "complexity": "medium",
-      "dependencies": ["task-1"],
-      "technicalDetails": "Create architectural decisions and identify files to modify",
-      "files": ["docs/design.md"]
-    },
-    {
-      "id": "task-3",
-      "title": "Implement core functionality",
-      "description": "Build the main feature based on the design",
-      "estimatedHours": 4,
-      "complexity": "high",
-      "dependencies": ["task-2"],
-      "technicalDetails": "Implement according to existing patterns in the codebase",
-      "files": ["src/"]
-    }
-  ],
-  "clarifyingQuestions": [],
-  "assumptions": ["Following existing code patterns"],
-  "risks": ["Need to understand existing architecture first"]
-}
-JSON
-
-echo "Tasks generated successfully!"
-SCRIPT
-
-chmod +x "${OUTPUT_DIR}/brainstorm_task.sh"
-
-# Start tmux session with Claude
-echo "Starting Claude CLI session..."
+# Start tmux session in project directory
 tmux new-session -d -s "$SESSION_ID" -c "$PROJECT_PATH"
 
-# Build the Claude prompt
-CLAUDE_PROMPT="I need you to analyze this codebase and break down the following request into actionable development tasks.
+# Create the REAL prompt for Claude
+CLAUDE_PROMPT="You are in a project directory: ${PROJECT_PATH}
 
-Current directory: ${PROJECT_PATH}
-User request: ${USER_REQUEST}
+USER REQUEST: ${USER_REQUEST}
 
-Please:
-1. First explore the project structure using commands like:
-   - ls -la
-   - find . -type f -name '*.js' -o -name '*.py' -o -name '*.go' | head -20
-   - cat package.json or README.md if they exist
-   
-2. Understand the tech stack and patterns
+Your task is to:
+1. ACTUALLY explore this codebase using real commands
+2. Understand the project structure, tech stack, and patterns
+3. Break down the user's request into specific, actionable tasks
+4. Generate a JSON file with the task breakdown
 
-3. Create a detailed task breakdown and save it as JSON to: ${OUTPUT_DIR}/tasks.json
+Start by exploring the project:
+- Use 'ls -la' to see files
+- Use 'find . -type f -name \"*.js\" -o -name \"*.py\" -o -name \"*.go\" | head -20' to find source files
+- Use 'cat package.json' or 'cat README.md' to understand the project
+- Use 'grep -r \"function\" --include=\"*.js\" | head -10' to see code patterns
 
-The JSON should have tasks that are 2-4 hours each, with clear descriptions and dependencies.
+After you understand the codebase, create a file at ${OUTPUT_DIR}/tasks.json with this structure:
+{
+  \"analysis\": \"Your actual analysis of this specific codebase\",
+  \"tasks\": [
+    {
+      \"id\": \"task-1\",
+      \"title\": \"Specific task title\",
+      \"description\": \"Detailed description based on actual code\",
+      \"estimatedHours\": 2-4,
+      \"complexity\": \"low|medium|high\",
+      \"dependencies\": [],
+      \"technicalDetails\": \"Specific files and functions to modify\",
+      \"files\": [\"actual/files/to/modify.js\"]
+    }
+  ],
+  \"clarifyingQuestions\": [\"Real questions based on code\"],
+  \"assumptions\": [\"Assumptions based on codebase\"],
+  \"risks\": [\"Real risks you identified\"]
+}
 
-After analysis, run: bash ${OUTPUT_DIR}/brainstorm_task.sh '${OUTPUT_DIR}/tasks.json' '${PROJECT_PATH}' '${USER_REQUEST}'
-"
+Use this command to create the JSON file:
+cat > ${OUTPUT_DIR}/tasks.json << 'EOF'
+(your JSON here)
+EOF
 
-# Send commands to tmux session
-tmux send-keys -t "$SESSION_ID" "# Claude Brainstorm Session for: ${USER_REQUEST}" Enter
+Start exploring now!"
+
+# Send commands to Claude
+tmux send-keys -t "$SESSION_ID" "# REAL Claude Brainstorming Session" Enter
+tmux send-keys -t "$SESSION_ID" "# Request: ${USER_REQUEST}" Enter
 tmux send-keys -t "$SESSION_ID" "cd ${PROJECT_PATH}" Enter
 tmux send-keys -t "$SESSION_ID" "" Enter
 
-# For now, directly generate the tasks (since we can't interactively prompt Claude)
-tmux send-keys -t "$SESSION_ID" "bash ${OUTPUT_DIR}/brainstorm_task.sh '${OUTPUT_DIR}/tasks.json' '${PROJECT_PATH}' '${USER_REQUEST}'" Enter
+# Start Claude
+tmux send-keys -t "$SESSION_ID" "claude" Enter
+sleep 1
+
+# Send the prompt to Claude line by line
+echo "$CLAUDE_PROMPT" | while IFS= read -r line; do
+    escaped_line=$(echo "$line" | sed "s/'/'\\\\''/g")
+    tmux send-keys -t "$SESSION_ID" "$escaped_line" Enter
+done
+
+# Create a monitor that checks for completion
+cat > "${OUTPUT_DIR}/monitor.sh" << 'MONITOR'
+#!/bin/bash
+OUTPUT_DIR="$1"
+SESSION_ID="$2"
+TIMEOUT=120  # 2 minutes max for brainstorming
+
+ELAPSED=0
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    if [ -f "${OUTPUT_DIR}/tasks.json" ]; then
+        echo "Tasks generated by Claude!"
+        # Validate JSON
+        if jq . "${OUTPUT_DIR}/tasks.json" > /dev/null 2>&1; then
+            echo "Valid JSON created"
+        else
+            echo "Invalid JSON, waiting..."
+        fi
+        break
+    fi
+    
+    if ! tmux has-session -t "$SESSION_ID" 2>/dev/null; then
+        echo "Session ended"
+        break
+    fi
+    
+    sleep 2
+    ELAPSED=$((ELAPSED + 2))
+done
+
+# If no tasks after timeout, create emergency fallback
+if [ ! -f "${OUTPUT_DIR}/tasks.json" ] || ! jq . "${OUTPUT_DIR}/tasks.json" > /dev/null 2>&1; then
+    echo "Creating emergency fallback tasks"
+    cat > "${OUTPUT_DIR}/tasks.json" << 'JSON'
+{
+  "analysis": "Claude session timed out - using emergency fallback",
+  "tasks": [
+    {
+      "id": "task-1",
+      "title": "Analyze codebase",
+      "description": "Review the project structure",
+      "estimatedHours": 2,
+      "complexity": "low",
+      "dependencies": [],
+      "technicalDetails": "Manual analysis required",
+      "files": []
+    }
+  ],
+  "clarifyingQuestions": ["Session timed out"],
+  "assumptions": [],
+  "risks": ["Tasks not based on actual code analysis"]
+}
+JSON
+fi
+MONITOR
+
+chmod +x "${OUTPUT_DIR}/monitor.sh"
+
+# Start monitor in background
+"${OUTPUT_DIR}/monitor.sh" "$OUTPUT_DIR" "$SESSION_ID" > "${OUTPUT_DIR}/monitor.log" 2>&1 &
+MONITOR_PID=$!
 
 echo ""
-echo "✅ Brainstorm session started: ${SESSION_ID}"
-echo "📁 Output will be saved to: ${OUTPUT_DIR}/tasks.json"
-echo "👀 Monitor with: tmux attach -t ${SESSION_ID}"
+echo "✅ REAL Claude brainstorm session started"
+echo "📁 Tasks will be saved to: ${OUTPUT_DIR}/tasks.json"  
+echo "📊 Monitor PID: ${MONITOR_PID}"
+echo "👀 Watch Claude analyze: tmux attach -t ${SESSION_ID}"
 echo ""
+
+# Return success
+exit 0
