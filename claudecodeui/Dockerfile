@@ -27,25 +27,25 @@ RUN apk add --no-cache python3 py3-setuptools make g++ bash curl git openssh
 
 WORKDIR /app
 
+# Create a non-root user for running the app first
+RUN addgroup -g 1001 appuser && \
+    adduser -D -u 1001 -G appuser -s /bin/bash appuser
+
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
+# Install production dependencies as root (needed for node-gyp)
 RUN npm ci --only=production
 
-# Copy built frontend from builder stage
-COPY --from=builder /app/dist ./dist
+# Copy built frontend from builder stage with proper ownership
+COPY --from=builder --chown=appuser:appuser /app/dist ./dist
 
-# Copy server files
-COPY server ./server
-COPY public ./public
+# Copy server files with proper ownership
+COPY --chown=appuser:appuser server ./server
+COPY --chown=appuser:appuser public ./public
 
 # Copy environment file if exists
-COPY .env* ./
-
-# Create a non-root user for running the app
-RUN addgroup -g 1001 appuser && \
-    adduser -D -u 1001 -G appuser -s /bin/bash appuser
+COPY --chown=appuser:appuser .env* ./
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/data/db /app/data/.claude/projects /app/data/sessions /app/data/projects && \
