@@ -1,7 +1,7 @@
 {
-  "name": "claude-code-ui",
-  "version": "1.7.0",
-  "description": "A web-based UI for Claude Code CLI",
+  "name": "d3",
+  "version": "1.0.0",
+  "description": "D3 - Document-Driven Development: A web-based UI for Claude Code CLI",
   "type": "module",
   "main": "server/index.js",
   "scripts": {
@@ -13,11 +13,14 @@
     "start": "npm run build && NODE_ENV=production npm run server"
   },
   "keywords": [
+    "d3",
+    "document-driven-development",
     "claude",
     "ai",
     "code",
     "ui",
-    "assistant"
+    "assistant",
+    "development"
   ],
   "author": "Claude Code UI Contributors",
   "license": "MIT",

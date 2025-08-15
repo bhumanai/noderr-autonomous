@@ -1,7 +1,7 @@
 # fly.toml app configuration file
 # See https://fly.io/docs/reference/configuration/
 
-app = "claudecodeui"
+app = "d3-app"
 primary_region = "sjc"
 kill_signal = "SIGINT"
 kill_timeout = "5s"
@@ -53,6 +53,6 @@ kill_timeout = "5s"
 
 # Persistent storage for database and sessions
 [[mounts]]
-  source = "claudecodeui_data"
+  source = "d3_data"
   destination = "/app/data"
   processes = ["app"]
