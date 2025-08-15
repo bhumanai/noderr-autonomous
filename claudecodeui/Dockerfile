@@ -44,8 +44,8 @@ COPY public ./public
 COPY .env* ./
 
 # Create a non-root user for running the app
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser -s /bin/bash appuser
+RUN addgroup -g 1001 appuser && \
+    adduser -D -u 1001 -G appuser -s /bin/bash appuser
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/data /home/appuser/.claude/projects && \
