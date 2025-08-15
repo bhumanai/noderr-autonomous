@@ -292,6 +292,31 @@ app.post('/api/projects/create', authenticateToken, async (req, res) => {
         }
 
         const project = await addProjectManually(projectPath.trim());
+        
+        // Auto-initialize git for new projects
+        try {
+            const { exec } = await import('child_process');
+            const { promisify } = await import('util');
+            const execAsync = promisify(exec);
+            
+            // Check if git is already initialized
+            try {
+                await execAsync('git rev-parse --git-dir', { cwd: projectPath.trim() });
+                console.log('Git already initialized for project:', projectPath);
+            } catch {
+                // Not a git repo, initialize it
+                await execAsync('git init', { cwd: projectPath.trim() });
+                console.log('Git initialized for new project:', projectPath);
+                
+                // Set default git config
+                await execAsync('git config user.name "Claude Code UI"', { cwd: projectPath.trim() }).catch(() => {});
+                await execAsync('git config user.email "claude@claudecodeui.local"', { cwd: projectPath.trim() }).catch(() => {});
+            }
+        } catch (gitError) {
+            console.error('Failed to auto-initialize git:', gitError);
+            // Don't fail project creation if git init fails
+        }
+        
         res.json({ success: true, project });
     } catch (error) {
         console.error('Error creating project:', error);

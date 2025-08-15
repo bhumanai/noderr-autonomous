@@ -46,6 +46,82 @@ async function validateGitRepository(projectPath) {
   }
 }
 
+// Initialize git repository for a project
+router.post('/init', async (req, res) => {
+  const { projectName } = req.body;
+  
+  if (!projectName) {
+    return res.status(400).json({ error: 'Project name is required' });
+  }
+
+  try {
+    const projectPath = await getActualProjectPath(projectName);
+    
+    // Check if already a git repo
+    try {
+      await execAsync('git rev-parse --git-dir', { cwd: projectPath });
+      return res.json({ 
+        success: true, 
+        message: 'Git repository already initialized',
+        alreadyExists: true 
+      });
+    } catch {
+      // Not a git repo, proceed with init
+    }
+    
+    // Initialize git repository
+    await execAsync('git init', { cwd: projectPath });
+    
+    // Create a default .gitignore if it doesn't exist
+    const gitignorePath = path.join(projectPath, '.gitignore');
+    try {
+      await fs.access(gitignorePath);
+    } catch {
+      // Create default .gitignore
+      const defaultGitignore = `node_modules/
+.env
+.env.local
+dist/
+build/
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+`;
+      await fs.writeFile(gitignorePath, defaultGitignore);
+    }
+    
+    // Configure git user if not set
+    try {
+      await execAsync('git config user.name', { cwd: projectPath });
+    } catch {
+      // Set default user name
+      await execAsync('git config user.name "Claude Code UI"', { cwd: projectPath });
+    }
+    
+    try {
+      await execAsync('git config user.email', { cwd: projectPath });
+    } catch {
+      // Set default email
+      await execAsync('git config user.email "claude@claudecodeui.local"', { cwd: projectPath });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Git repository initialized successfully',
+      projectPath 
+    });
+  } catch (error) {
+    console.error('Git init error:', error);
+    res.status(500).json({ 
+      error: 'Failed to initialize git repository', 
+      details: error.message 
+    });
+  }
+});
+
 // Get git status for a project
 router.get('/status', async (req, res) => {
   const { project } = req.query;

@@ -886,11 +886,38 @@ function GitPanel({ selectedProject, isMobile }) {
           {gitStatus.details && (
             <p className="text-sm text-center leading-relaxed mb-6 max-w-md">{gitStatus.details}</p>
           )}
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 max-w-md">
-            <p className="text-sm text-blue-700 dark:text-blue-300 text-center">
-              <strong>Tip:</strong> Run <code className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded font-mono text-xs">git init</code> in your project directory to initialize git source control.
-            </p>
-          </div>
+          {gitStatus.error.includes('Not a git repository') ? (
+            <button
+              onClick={async () => {
+                try {
+                  const response = await authenticatedFetch('/api/git/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ projectName: selectedProject.name })
+                  });
+                  const data = await response.json();
+                  if (data.success) {
+                    fetchGitStatus(); // Refresh status after init
+                    fetchBranches();
+                  } else {
+                    console.error('Failed to initialize git:', data.error);
+                  }
+                } catch (error) {
+                  console.error('Error initializing git:', error);
+                }
+              }}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
+              <GitBranch className="w-5 h-5" />
+              Initialize Git Repository
+            </button>
+          ) : (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 max-w-md">
+              <p className="text-sm text-blue-700 dark:text-blue-300 text-center">
+                <strong>Tip:</strong> Run <code className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded font-mono text-xs">git init</code> in your project directory to initialize git source control.
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <>
