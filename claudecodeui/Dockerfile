@@ -43,8 +43,9 @@ COPY public ./public
 # Copy environment file if exists
 COPY .env* ./
 
-# Create necessary directories
-RUN mkdir -p /app/data /root/.claude/projects
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/data /root/.claude/projects && \
+    chmod -R 755 /app/data
 
 # Expose port
 EXPOSE 3001

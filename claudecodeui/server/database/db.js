@@ -7,7 +7,15 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const DB_PATH = path.join(__dirname, 'auth.db');
+// Use /app/data for production, local directory for development
+const dataDir = process.env.NODE_ENV === 'production' ? '/app/data' : __dirname;
+
+// Ensure data directory exists
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const DB_PATH = path.join(dataDir, 'auth.db');
 const INIT_SQL_PATH = path.join(__dirname, 'init.sql');
 
 // Create database connection
