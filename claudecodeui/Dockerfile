@@ -1,6 +1,9 @@
 # Multi-stage build for Claude Code UI
 FROM node:20-alpine AS builder
 
+# Install build dependencies including Python
+RUN apk add --no-cache python3 py3-setuptools make g++ bash
+
 # Set working directory
 WORKDIR /app
 
@@ -20,7 +23,7 @@ RUN npm run build
 FROM node:20-alpine
 
 # Install required system dependencies for node-pty
-RUN apk add --no-cache python3 make g++ bash curl
+RUN apk add --no-cache python3 py3-setuptools make g++ bash curl
 
 WORKDIR /app
 
