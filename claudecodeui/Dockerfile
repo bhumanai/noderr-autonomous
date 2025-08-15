@@ -22,8 +22,8 @@ RUN npm run build
 # Production stage
 FROM node:20-alpine
 
-# Install required system dependencies for node-pty
-RUN apk add --no-cache python3 py3-setuptools make g++ bash curl
+# Install required system dependencies for node-pty and git
+RUN apk add --no-cache python3 py3-setuptools make g++ bash curl git openssh
 
 WORKDIR /app
 
