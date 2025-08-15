@@ -20,7 +20,7 @@ RUN npm run build
 FROM node:20-alpine
 
 # Install required system dependencies for node-pty
-RUN apk add --no-cache python3 make g++ bash
+RUN apk add --no-cache python3 make g++ bash curl
 
 WORKDIR /app
 
