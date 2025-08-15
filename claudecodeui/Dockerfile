@@ -43,16 +43,8 @@ COPY public ./public
 # Copy environment file if exists
 COPY .env* ./
 
-# Create a non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Create Claude directory structure
-RUN mkdir -p /home/nodejs/.claude/projects && \
-    chown -R nodejs:nodejs /home/nodejs/.claude
-
-# Switch to non-root user
-USER nodejs
+# Create necessary directories
+RUN mkdir -p /app/data /root/.claude/projects
 
 # Expose port
 EXPOSE 3001
